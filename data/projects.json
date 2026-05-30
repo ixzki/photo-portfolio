@@ -1,0 +1,158 @@
+[
+  {
+    "id": "1",
+    "slug": "change-x-community",
+    "titleZh": "转换社区",
+    "design": "Atelier GOM",
+    "city": "上海",
+    "time": "2023-2024 / 2024年完成",
+    "equipment": "Sony A7R5 + 24-70mm f/2.8 GM II",
+    "coverUrl": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2600&q=88",
+    "thumbUrl": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=86",
+    "coverW": 1440,
+    "coverH": 960,
+    "thumbW": 1200,
+    "thumbH": 800,
+    "order": 0,
+    "visible": true,
+    "rows": [
+      {
+        "id": "r1",
+        "layout": "landscape",
+        "order": 0,
+        "images": [
+          { "id": "i1", "url": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2200&q=88", "width": 1440, "height": 960, "alt": "仰视高层建筑与天空", "order": 0 }
+        ]
+      },
+      {
+        "id": "r2",
+        "layout": "half",
+        "order": 1,
+        "images": [
+          { "id": "i2", "url": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1600&q=86", "width": 1080, "height": 1440, "alt": "现代建筑曲线与白色立面", "order": 0 },
+          { "id": "i3", "url": "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1600&q=86", "width": 1080, "height": 1440, "alt": "建筑入口与几何结构", "order": 1 }
+        ]
+      },
+      {
+        "id": "r3",
+        "layout": "landscape",
+        "order": 2,
+        "images": [
+          { "id": "i4", "url": "https://images.unsplash.com/photo-1511818966892-d7d671e672a2?auto=format&fit=crop&w=2200&q=86", "width": 1440, "height": 1080, "alt": "室内展厅空间", "order": 0 },
+          { "id": "i5", "url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=2200&q=86", "width": 1440, "height": 1080, "alt": "城市街道夜景", "order": 1 }
+        ]
+      },
+      {
+        "id": "r4",
+        "layout": "wrap-collage",
+        "order": 3,
+        "images": [
+          { "id": "i6", "url": "https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1800&q=86", "width": 1440, "height": 960, "alt": "街角灯光", "order": 0 },
+          { "id": "i7", "url": "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=86", "width": 1080, "height": 1440, "alt": "水面与远山", "order": 1 }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "slug": "rain-theater",
+    "titleZh": "雨后剧场",
+    "design": "城市纪实",
+    "city": "香港",
+    "time": "2024 / 长期拍摄",
+    "equipment": "Leica M11 + 35mm f/1.4 Summilux",
+    "coverUrl": "https://images.unsplash.com/photo-1498307833015-e7b400441eb8?auto=format&fit=crop&w=2400&q=88",
+    "thumbUrl": "https://images.unsplash.com/photo-1498307833015-e7b400441eb8?auto=format&fit=crop&w=1200&q=86",
+    "coverW": 1500,
+    "coverH": 1125,
+    "thumbW": 1200,
+    "thumbH": 900,
+    "order": 1,
+    "visible": true,
+    "rows": [
+      {
+        "id": "r5",
+        "layout": "landscape",
+        "order": 0,
+        "images": [
+          { "id": "i8", "url": "https://images.unsplash.com/photo-1498307833015-e7b400441eb8?auto=format&fit=crop&w=2200&q=88", "width": 1500, "height": 1125, "alt": "雨后城市水面与建筑", "order": 0 },
+          { "id": "i9", "url": "https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=2200&q=86", "width": 1440, "height": 960, "alt": "夜色街角", "order": 1 }
+        ]
+      },
+      {
+        "id": "r6",
+        "layout": "half",
+        "order": 1,
+        "images": [
+          { "id": "i10", "url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1600&q=86", "width": 1080, "height": 1440, "alt": "密集城市夜景", "order": 0 },
+          { "id": "i11", "url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=86", "width": 1080, "height": 1440, "alt": "山路与暮色", "order": 1 }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "3",
+    "slug": "ridge-morning",
+    "titleZh": "山脊晨光",
+    "design": "自然地景",
+    "city": "云南",
+    "time": "2024 / 已整理",
+    "equipment": "Fujifilm GFX 100S + 32-64mm f/4",
+    "coverUrl": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2400&q=88",
+    "thumbUrl": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=86",
+    "coverW": 1500,
+    "coverH": 1000,
+    "thumbW": 1200,
+    "thumbH": 800,
+    "order": 2,
+    "visible": true,
+    "rows": [
+      {
+        "id": "r7",
+        "layout": "landscape",
+        "order": 0,
+        "images": [
+          { "id": "i12", "url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2200&q=88", "width": 1500, "height": 1000, "alt": "山路与晨光", "order": 0 },
+          { "id": "i13", "url": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=2200&q=86", "width": 1440, "height": 1080, "alt": "森林光线", "order": 1 }
+        ]
+      },
+      {
+        "id": "r8",
+        "layout": "wrap",
+        "order": 1,
+        "images": [
+          { "id": "i14", "url": "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1600&q=86", "width": 1080, "height": 1440, "alt": "湖面与天空", "order": 0 },
+          { "id": "i15", "url": "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1600&q=86", "width": 1080, "height": 1440, "alt": "山谷与湖", "order": 1 }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "4",
+    "slug": "window-portrait",
+    "titleZh": "窗边肖像",
+    "design": "自然光肖像",
+    "city": "广州",
+    "time": "2023 / 委托拍摄",
+    "equipment": "Canon R5 + 85mm f/1.2L",
+    "coverUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1800&q=88",
+    "thumbUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=86",
+    "coverW": 1200,
+    "coverH": 1500,
+    "thumbW": 600,
+    "thumbH": 750,
+    "order": 3,
+    "visible": true,
+    "rows": [
+      {
+        "id": "r9",
+        "layout": "portrait",
+        "order": 0,
+        "images": [
+          { "id": "i16", "url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1800&q=88", "width": 1200, "height": 1500, "alt": "窗边自然光人像", "order": 0 },
+          { "id": "i17", "url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1600&q=86", "width": 1080, "height": 1440, "alt": "人物特写", "order": 1 }
+        ]
+      }
+    ]
+  }
+]

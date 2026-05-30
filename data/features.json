@@ -1,0 +1,34 @@
+[
+  {
+    "id": "f1",
+    "type": "project",
+    "projectSlug": "change-x-community",
+    "projectTitle": "转换社区",
+    "projectCoverUrl": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2600&q=88",
+    "order": 0
+  },
+  {
+    "id": "f2",
+    "type": "project",
+    "projectSlug": "rain-theater",
+    "projectTitle": "雨后剧场",
+    "projectCoverUrl": "https://images.unsplash.com/photo-1498307833015-e7b400441eb8?auto=format&fit=crop&w=2400&q=88",
+    "order": 1
+  },
+  {
+    "id": "f3",
+    "type": "project",
+    "projectSlug": "ridge-morning",
+    "projectTitle": "山脊晨光",
+    "projectCoverUrl": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2400&q=88",
+    "order": 2
+  },
+  {
+    "id": "f4",
+    "type": "project",
+    "projectSlug": "window-portrait",
+    "projectTitle": "窗边肖像",
+    "projectCoverUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1800&q=88",
+    "order": 3
+  }
+]
