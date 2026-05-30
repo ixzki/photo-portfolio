@@ -65,9 +65,8 @@ data/                         # 本地 JSON 数据（无数据库时使用）
 |------|------|------|
 | `ADMIN_PASSWORD` | 后台管理员密码 | 是 |
 | `AUTH_SECRET` | Cookie 签名密钥（32+ 位随机字符串） | 是 |
-| `DATABASE_URL` | Neon Postgres 连接地址 | 否 |
+| `DATABASE_URL` | Neon Postgres 连接地址 | 是 |
 
-不设置 `DATABASE_URL` 时，数据自动存储到 `data/*.json` 文件。
 
 ## License
 

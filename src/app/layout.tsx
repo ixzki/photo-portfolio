@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { getSettings } from "@/lib/db";
+import { hasDatabase, getSettings } from "@/lib/db";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -10,7 +12,16 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = await getSettings();
+  const pathname = (await headers()).get("x-next-pathname") || "";
+  const isSetup = pathname.startsWith("/setup");
+
+  if (!isSetup && !hasDatabase()) {
+    redirect("/setup");
+  }
+
+  const settings = isSetup
+    ? { siteName: "摄影作品集", copyright: "摄影作品集", icp: "" }
+    : await getSettings();
 
   return (
     <html lang="zh-Hans" suppressHydrationWarning>

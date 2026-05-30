@@ -1,13 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { seedFeatures, seedProjects, seedSettings } from "./data";
 import { FeatureItem, Image, LayoutType, Project, Row, SiteSettings } from "./types";
-import fs from "fs";
-import path from "path";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const PROJECTS_FILE = path.join(DATA_DIR, "projects.json");
-const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
-const FEATURES_FILE = path.join(DATA_DIR, "features.json");
 
 type SqlClient = ReturnType<typeof neon>;
 type ProjectCreateInput = Omit<Project, "id" | "rows"> & { rows?: Omit<Row, "id" | "images">[] };
@@ -19,36 +12,14 @@ function databaseUrl() {
   return process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || "";
 }
 
-function shouldUseNeon() {
-  return Boolean(databaseUrl()) && process.env.DISABLE_NEON !== "1";
-}
-
 function getSql() {
-  if (!shouldUseNeon()) return null;
+  if (!databaseUrl()) return null;
   if (!sqlClient) sqlClient = neon(databaseUrl());
   return sqlClient;
 }
 
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
 function generateId(): string {
   return Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-}
-
-function readJson<T>(file: string, fallback: T): T {
-  ensureDataDir();
-  if (!fs.existsSync(file)) {
-    writeJson(file, fallback);
-    return fallback;
-  }
-  return JSON.parse(fs.readFileSync(file, "utf-8"));
-}
-
-function writeJson<T>(file: string, data: T) {
-  ensureDataDir();
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf-8");
 }
 
 function normalizeSettings(settings: Partial<SiteSettings>): SiteSettings {
@@ -91,30 +62,6 @@ function normalizeFeature(feature: FeatureItem): FeatureItem {
   return { ...feature, order: Number(feature.order) || 0 };
 }
 
-function readSettingsFile(): SiteSettings {
-  return normalizeSettings(readJson<SiteSettings>(SETTINGS_FILE, seedSettings));
-}
-
-function writeSettingsFile(settings: SiteSettings) {
-  writeJson(SETTINGS_FILE, normalizeSettings(settings));
-}
-
-function readProjectsFile(): Project[] {
-  return readJson<Project[]>(PROJECTS_FILE, seedProjects).map(normalizeProject);
-}
-
-function writeProjectsFile(projects: Project[]) {
-  writeJson(PROJECTS_FILE, projects.map(normalizeProject));
-}
-
-function readFeaturesFile(): FeatureItem[] {
-  return readJson<FeatureItem[]>(FEATURES_FILE, seedFeatures).map(normalizeFeature);
-}
-
-function writeFeaturesFile(items: FeatureItem[]) {
-  writeJson(FEATURES_FILE, items.map(normalizeFeature));
-}
-
 async function ensureSchema(sql: SqlClient) {
   if (!schemaReady) {
     schemaReady = (async () => {
@@ -145,33 +92,32 @@ async function ensureSchema(sql: SqlClient) {
       if (Number(settingsRows[0]?.count || 0) === 0) {
         await sql(
           "INSERT INTO portfolio_settings (id, data) VALUES ($1, $2::jsonb)",
-          ["default", JSON.stringify(readSettingsFile())],
+          ["default", JSON.stringify(normalizeSettings(seedSettings))],
         );
       }
 
       const projectRows = await sql("SELECT COUNT(*)::text AS count FROM portfolio_projects") as Array<{ count: string }>;
       if (Number(projectRows[0]?.count || 0) === 0) {
-        for (const project of readProjectsFile()) {
+        for (const project of seedProjects) {
           await sql(
             "INSERT INTO portfolio_projects (id, slug, visible, order_index, data) VALUES ($1, $2, $3, $4, $5::jsonb)",
-            [project.id, project.slug, project.visible, project.order, JSON.stringify(project)],
+            [project.id, project.slug, project.visible, project.order, JSON.stringify(normalizeProject(project))],
           );
         }
       }
 
       const featureRows = await sql("SELECT COUNT(*)::text AS count FROM portfolio_features") as Array<{ count: string }>;
       if (Number(featureRows[0]?.count || 0) === 0) {
-        for (const feature of readFeaturesFile()) {
+        for (const feature of seedFeatures) {
           await sql(
             "INSERT INTO portfolio_features (id, order_index, data) VALUES ($1, $2, $3::jsonb)",
-            [feature.id, feature.order, JSON.stringify(feature)],
+            [feature.id, feature.order, JSON.stringify(normalizeFeature(feature))],
           );
         }
       }
     })();
   }
-
-  await schemaReady;
+  return schemaReady;
 }
 
 async function db() {
@@ -181,134 +127,70 @@ async function db() {
   return sql;
 }
 
-// ---- Feature Items ----
-export async function getFeatures(): Promise<FeatureItem[]> {
-  const sql = await db();
-  if (!sql) return readFeaturesFile().sort((a, b) => a.order - b.order);
-
-  const rows = await sql("SELECT data FROM portfolio_features ORDER BY order_index ASC") as Array<{ data: FeatureItem }>;
-  return rows.map((row) => normalizeFeature(row.data));
+// ---- Health check ----
+export function hasDatabase(): boolean {
+  return Boolean(databaseUrl());
 }
 
-export async function addFeature(data: Omit<FeatureItem, "id">): Promise<FeatureItem> {
-  const item = normalizeFeature({ ...data, id: generateId() });
-  const sql = await db();
-  if (!sql) {
-    const items = readFeaturesFile();
-    items.push(item);
-    writeFeaturesFile(items);
-    return item;
-  }
-
-  await sql(
-    "INSERT INTO portfolio_features (id, order_index, data) VALUES ($1, $2, $3::jsonb)",
-    [item.id, item.order, JSON.stringify(item)],
-  );
-  return item;
-}
-
-export async function updateFeature(id: string, data: Partial<FeatureItem>): Promise<FeatureItem | null> {
-  const items = await getFeatures();
-  const idx = items.findIndex((feature) => feature.id === id);
-  if (idx === -1) return null;
-  const updated = normalizeFeature({ ...items[idx], ...data });
-
-  const sql = await db();
-  if (!sql) {
-    items[idx] = updated;
-    writeFeaturesFile(items);
-    return updated;
-  }
-
-  await sql(
-    "UPDATE portfolio_features SET order_index = $1, data = $2::jsonb WHERE id = $3",
-    [updated.order, JSON.stringify(updated), id],
-  );
-  return updated;
-}
-
-export async function deleteFeature(id: string): Promise<boolean> {
-  const sql = await db();
-  if (!sql) {
-    const items = readFeaturesFile();
-    const idx = items.findIndex((feature) => feature.id === id);
-    if (idx === -1) return false;
-    items.splice(idx, 1);
-    writeFeaturesFile(items);
+export async function checkConnection(): Promise<boolean> {
+  const sql = getSql();
+  if (!sql) return false;
+  try {
+    await sql("SELECT 1");
     return true;
+  } catch {
+    return false;
   }
-
-  const rows = await sql("DELETE FROM portfolio_features WHERE id = $1 RETURNING id", [id]) as Array<{ id: string }>;
-  return rows.length > 0;
-}
-
-export async function reorderFeatures(ids: string[]): Promise<FeatureItem[]> {
-  const items = await getFeatures();
-  const reordered = ids
-    .map((id, order) => {
-      const item = items.find((feature) => feature.id === id);
-      return item ? normalizeFeature({ ...item, order }) : null;
-    })
-    .filter((item): item is FeatureItem => Boolean(item));
-
-  const sql = await db();
-  if (!sql) {
-    writeFeaturesFile(reordered);
-    return reordered;
-  }
-
-  for (const item of reordered) {
-    await sql(
-      "UPDATE portfolio_features SET order_index = $1, data = $2::jsonb WHERE id = $3",
-      [item.order, JSON.stringify(item), item.id],
-    );
-  }
-  return reordered;
 }
 
 // ---- Projects ----
 export async function getProjects(): Promise<Project[]> {
-  return (await getAllProjects()).filter((project) => project.visible);
+  const sql = await db();
+  if (!sql) return seedProjects.map(normalizeProject);
+
+  const rows = await sql(
+    "SELECT data FROM portfolio_projects WHERE visible = true ORDER BY order_index ASC"
+  ) as Array<{ data: Project }>;
+  return rows.map((r) => normalizeProject(r.data));
 }
 
 export async function getAllProjects(): Promise<Project[]> {
   const sql = await db();
-  if (!sql) return readProjectsFile().sort((a, b) => a.order - b.order);
+  if (!sql) return seedProjects.map(normalizeProject);
 
-  const rows = await sql("SELECT data FROM portfolio_projects ORDER BY order_index ASC") as Array<{ data: Project }>;
-  return rows.map((row) => normalizeProject(row.data));
-}
-
-export async function getProjectBySlug(slug: string): Promise<Project | null> {
-  const sql = await db();
-  if (!sql) return readProjectsFile().find((project) => project.slug === slug) || null;
-
-  const rows = await sql("SELECT data FROM portfolio_projects WHERE slug = $1 LIMIT 1", [slug]) as Array<{ data: Project }>;
-  return rows[0] ? normalizeProject(rows[0].data) : null;
+  const rows = await sql(
+    "SELECT data FROM portfolio_projects ORDER BY order_index ASC"
+  ) as Array<{ data: Project }>;
+  return rows.map((r) => normalizeProject(r.data));
 }
 
 export async function getProjectById(id: string): Promise<Project | null> {
   const sql = await db();
-  if (!sql) return readProjectsFile().find((project) => project.id === id) || null;
+  if (!sql) return seedProjects.find((p) => p.id === id) ?? null;
 
   const rows = await sql("SELECT data FROM portfolio_projects WHERE id = $1 LIMIT 1", [id]) as Array<{ data: Project }>;
   return rows[0] ? normalizeProject(rows[0].data) : null;
 }
 
-export async function createProject(data: ProjectCreateInput): Promise<Project> {
+export async function getProjectBySlug(slug: string): Promise<Project | null> {
+  const sql = await db();
+  if (!sql) return seedProjects.find((p) => p.slug === slug) ?? null;
+
+  const rows = await sql("SELECT data FROM portfolio_projects WHERE slug = $1 LIMIT 1", [slug]) as Array<{ data: Project }>;
+  return rows[0] ? normalizeProject(rows[0].data) : null;
+}
+
+export async function createProject(input: ProjectCreateInput): Promise<Project> {
   const project = normalizeProject({
-    ...data,
+    ...input,
     id: generateId(),
-    rows: (data.rows || []).map((row) => ({ ...row, id: generateId(), images: [] })),
+    rows: [],
+    visible: input.visible ?? true,
+    order: input.order ?? 0,
   });
 
   const sql = await db();
-  if (!sql) {
-    const projects = readProjectsFile();
-    projects.push(project);
-    writeProjectsFile(projects);
-    return project;
-  }
+  if (!sql) throw new Error("数据库未配置，请在 Vercel 中设置 DATABASE_URL 环境变量");
 
   await sql(
     "INSERT INTO portfolio_projects (id, slug, visible, order_index, data) VALUES ($1, $2, $3, $4, $5::jsonb)",
@@ -323,14 +205,7 @@ export async function updateProject(id: string, data: Partial<Project>): Promise
   const updated = normalizeProject({ ...current, ...data, id: current.id });
 
   const sql = await db();
-  if (!sql) {
-    const projects = readProjectsFile();
-    const index = projects.findIndex((project) => project.id === id);
-    if (index === -1) return null;
-    projects[index] = updated;
-    writeProjectsFile(projects);
-    return updated;
-  }
+  if (!sql) throw new Error("数据库未配置");
 
   await sql(
     "UPDATE portfolio_projects SET slug = $1, visible = $2, order_index = $3, data = $4::jsonb WHERE id = $5",
@@ -341,14 +216,7 @@ export async function updateProject(id: string, data: Partial<Project>): Promise
 
 export async function deleteProject(id: string): Promise<boolean> {
   const sql = await db();
-  if (!sql) {
-    const projects = readProjectsFile();
-    const index = projects.findIndex((project) => project.id === id);
-    if (index === -1) return false;
-    projects.splice(index, 1);
-    writeProjectsFile(projects);
-    return true;
-  }
+  if (!sql) throw new Error("数据库未配置");
 
   const rows = await sql("DELETE FROM portfolio_projects WHERE id = $1 RETURNING id", [id]) as Array<{ id: string }>;
   return rows.length > 0;
@@ -429,10 +297,78 @@ export async function deleteImage(projectId: string, rowId: string, imageId: str
   return true;
 }
 
+// ---- Features ----
+export async function getFeatures(): Promise<FeatureItem[]> {
+  const sql = await db();
+  if (!sql) return seedFeatures.map(normalizeFeature);
+
+  const rows = await sql(
+    "SELECT data FROM portfolio_features ORDER BY order_index ASC"
+  ) as Array<{ data: FeatureItem }>;
+  return rows.map((r) => normalizeFeature(r.data));
+}
+
+export async function addFeature(input: Omit<FeatureItem, "id">): Promise<FeatureItem> {
+  const feature = normalizeFeature({ ...input, id: generateId() });
+  const sql = await db();
+  if (!sql) throw new Error("数据库未配置");
+
+  await sql(
+    "INSERT INTO portfolio_features (id, order_index, data) VALUES ($1, $2, $3::jsonb)",
+    [feature.id, feature.order, JSON.stringify(feature)],
+  );
+  return feature;
+}
+
+export async function updateFeature(id: string, data: Partial<FeatureItem>): Promise<FeatureItem | null> {
+  const features = await getFeatures();
+  const current = features.find((f) => f.id === id);
+  if (!current) return null;
+  const updated = normalizeFeature({ ...current, ...data });
+
+  const sql = await db();
+  if (!sql) throw new Error("数据库未配置");
+
+  await sql(
+    "UPDATE portfolio_features SET order_index = $1, data = $2::jsonb WHERE id = $3",
+    [updated.order, JSON.stringify(updated), id],
+  );
+  return updated;
+}
+
+export async function deleteFeature(id: string): Promise<boolean> {
+  const sql = await db();
+  if (!sql) throw new Error("数据库未配置");
+
+  const rows = await sql("DELETE FROM portfolio_features WHERE id = $1 RETURNING id", [id]) as Array<{ id: string }>;
+  return rows.length > 0;
+}
+
+export async function reorderFeatures(ids: string[]): Promise<FeatureItem[]> {
+  const features = await getFeatures();
+  const reordered = ids
+    .map((id, order) => {
+      const feature = features.find((f) => f.id === id);
+      return feature ? { ...feature, order } : null;
+    })
+    .filter((f): f is FeatureItem => f !== null);
+
+  const sql = await db();
+  if (!sql) throw new Error("数据库未配置");
+
+  for (const feature of reordered) {
+    await sql(
+      "UPDATE portfolio_features SET order_index = $1, data = $2::jsonb WHERE id = $3",
+      [feature.order, JSON.stringify(feature), feature.id],
+    );
+  }
+  return reordered;
+}
+
 // ---- Settings ----
 export async function getSettings(): Promise<SiteSettings> {
   const sql = await db();
-  if (!sql) return readSettingsFile();
+  if (!sql) return normalizeSettings(seedSettings);
 
   const rows = await sql("SELECT data FROM portfolio_settings WHERE id = 'default' LIMIT 1") as Array<{ data: SiteSettings }>;
   return rows[0] ? normalizeSettings(rows[0].data) : normalizeSettings(seedSettings);
@@ -441,10 +377,7 @@ export async function getSettings(): Promise<SiteSettings> {
 export async function updateSettings(data: Partial<SiteSettings>): Promise<SiteSettings> {
   const updated = normalizeSettings({ ...(await getSettings()), ...data });
   const sql = await db();
-  if (!sql) {
-    writeSettingsFile(updated);
-    return updated;
-  }
+  if (!sql) throw new Error("数据库未配置");
 
   await sql(
     "INSERT INTO portfolio_settings (id, data) VALUES ('default', $1::jsonb) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data",
