@@ -2,7 +2,7 @@
 
 一个极简风格的个人摄影作品集网站，基于 Next.js 16 构建，支持后台管理，可一键部署到 Vercel。
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/photo-portfolio&env=ADMIN_PASSWORD,AUTH_SECRET&envDescription=管理员密码和Cookie签名密钥&envLink=https://github.com/your-username/photo-portfolio#环境变量)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ixzki/photo-portfolio&env=ADMIN_PASSWORD,AUTH_SECRET&envDescription=管理员密码和Cookie签名密钥&envLink=https://github.com/ixzki/photo-portfolio#环境变量)
 
 ## 特性
 
