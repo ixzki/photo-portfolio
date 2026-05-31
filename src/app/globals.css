@@ -1567,8 +1567,18 @@ body:has(.detail-page.is-active) .footer {
   }
 
   .detail-page .detail-next-action {
-    right: 0;
-    bottom: 0;
+    position: static;
+    right: auto;
+    bottom: auto;
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+    min-width: auto;
+    height: auto;
+    padding: 0 var(--edge-gap) calc(var(--edge-gap) * 2);
+    background: transparent !important;
+    color: var(--fore-color) !important;
+    font-weight: 500 !important;
   }
 }
 
