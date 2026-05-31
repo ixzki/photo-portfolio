@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 
@@ -10,26 +10,13 @@ interface ImageLoaderProps {
   style?: React.CSSProperties;
 }
 
-/** Generate a tiny 20px-wide placeholder URL for LQIP */
-function thumbUrl(src: string): string {
-  try {
-    const url = new URL(src);
-    if (url.hostname.includes("unsplash.com")) {
-      url.searchParams.set("w", "20");
-      url.searchParams.set("q", "10");
-      return url.toString();
-    }
-  } catch {}
-  return "";
-}
-
 export default function ImageLoader({ src, alt, className = "", priority = false, style }: ImageLoaderProps) {
+  // Priority images start visible immediately - no fade-in
   const [loadedSrc, setLoadedSrc] = useState(priority ? src : "");
   const imgRef = useRef<HTMLImageElement>(null);
-  const thumb = thumbUrl(src);
 
   useEffect(() => {
-    if (priority) return;
+    if (priority) return; // Already visible, skip
     const img = imgRef.current;
     if (!img) return;
 
@@ -38,17 +25,17 @@ export default function ImageLoader({ src, alt, className = "", priority = false
       return;
     }
 
-    const done = () => setLoadedSrc(src);
-    img.addEventListener("load", done);
-    img.addEventListener("error", done);
+    const handleLoad = () => setLoadedSrc(src);
+    const handleError = () => setLoadedSrc(src);
+    img.addEventListener("load", handleLoad);
+    img.addEventListener("error", handleError);
     return () => {
-      img.removeEventListener("load", done);
-      img.removeEventListener("error", done);
+      img.removeEventListener("load", handleLoad);
+      img.removeEventListener("error", handleError);
     };
   }, [src, priority]);
 
-  const loaded = priority || loadedSrc === src;
-  const finalClass = `${className}${loaded ? " loaded" : ""}`;
+  const finalClass = priority ? `${className} loaded` : `${className}${loadedSrc === src ? " loaded" : ""}`;
 
   return (
     <img
@@ -57,10 +44,7 @@ export default function ImageLoader({ src, alt, className = "", priority = false
       alt={alt}
       className={finalClass}
       loading={priority ? "eager" : "lazy"}
-      style={{
-        ...style,
-        ...(thumb ? { "--thumb": `url(${thumb})` } : {}),
-      } as React.CSSProperties}
+      style={style}
       draggable={false}
     />
   );
