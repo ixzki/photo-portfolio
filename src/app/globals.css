@@ -75,13 +75,18 @@ a {
 
 img {
   display: block;
-  background: var(--image-loading-bg);
+  background-color: var(--image-loading-bg);
+  background-image: var(--thumb, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(15px);
   opacity: 0;
-  transition: opacity 0.5s ease, transform 0.5s ease;
+  transition: opacity 0.5s ease, filter 0.5s ease;
 }
 
 img.loaded {
-  background: transparent;
+  filter: blur(0);
   opacity: 1;
 }
 
