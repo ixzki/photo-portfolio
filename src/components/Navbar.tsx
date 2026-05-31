@@ -40,12 +40,12 @@ export default function Navbar({ siteName }: { siteName: string }) {
       className={`navbar${isDetail && !scrolled ? " navbar-transparent" : ""}`}
       aria-label="主导航"
     >
-      <Link className={`logo ${isHome ? "is-active" : ""}`} href="/" data-nav="home">
+      <Link className={`logo hover-invert ${isHome ? "is-active" : ""}`} href="/" data-nav="home">
         {siteName}
       </Link>
       <div className="menu">
         <Link
-          className={`menu-item ${isWorks ? "is-active" : ""}`}
+          className={`menu-item hover-invert ${isWorks ? "is-active" : ""}`}
           href="/works"
           data-nav="works"
         >
@@ -53,7 +53,7 @@ export default function Navbar({ siteName }: { siteName: string }) {
         </Link>
         <span className="menu-divider" aria-hidden="true" />
         <Link
-          className={`menu-item ${isAbout ? "is-active" : ""}`}
+          className={`menu-item hover-invert ${isAbout ? "is-active" : ""}`}
           href="/about"
           data-nav="about"
         >

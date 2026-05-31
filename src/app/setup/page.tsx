@@ -2,7 +2,7 @@ export default function SetupPage() {
   return (
     <div style={{
       maxWidth: 680, margin: "80px auto", padding: "0 24px",
-      fontFamily: '"Source Han Sans SC", "Noto Sans SC", "Helvetica Neue", Helvetica, Arial, sans-serif',
+      fontFamily: '"Jost", "Source Han Sans SC", "Noto Sans SC", "Helvetica Neue", Helvetica, Arial, sans-serif',
       color: "#1a1a1a", lineHeight: 1.8, fontSize: 15
     }}>
       <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 8 }}>

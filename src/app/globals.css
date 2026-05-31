@@ -18,11 +18,6 @@
   background: transparent;
   color: var(--fore-color);
 }
-.navbar-transparent .logo:hover,
-.navbar-transparent .menu-item:hover {
-  background: var(--fore-color);
-  color: var(--back-color);
-}
 /* ============================================================
    摄影档案 — 林屿 Photography Archive
    Design: 1:1 recreation of archsource.cn
@@ -63,7 +58,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   font-optical-sizing: auto;
-  font-family: "Source Han Sans SC", "Noto Sans SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: "Jost", "Source Han Sans SC", "Noto Sans SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-style: normal;
   cursor: default;
   user-select: none;
@@ -149,13 +144,6 @@ img.loaded {
   background: var(--fore-color);
 }
 
-.logo:hover,
-.logo.is-active,
-.menu-item:hover,
-.menu-item.is-active {
-  background: var(--fore-color);
-  color: var(--back-color);
-}
 
 /* ---- Main Layout ---- */
 main {
@@ -263,7 +251,7 @@ main {
 
 .works-item {
   overflow: visible;
-  font-size: var(--small-size);
+  font-size: calc(var(--font-size) * 0.8);
   text-align: left;
 }
 
@@ -297,17 +285,11 @@ main {
   margin-top: 0.25em;
   overflow: hidden;
   color: var(--fore-color);
-  font-size: var(--small-size);
+  font-size: calc(var(--font-size) * 0.8);
   line-height: 1;
   padding: 0.15em 0;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.works-item:hover .works-item-title,
-.works-item:hover .works-item-subtitle {
-  background: var(--fore-color);
-  color: var(--back-color);
 }
 
 /* ---- Detail Page ---- */
@@ -365,7 +347,7 @@ main {
 
 .project-info {
   color: var(--fore-color);
-  font-size: var(--small-size);
+  font-size: calc(var(--font-size) * 0.8);
   line-height: 1.6;
   text-align: left;
 }
@@ -563,10 +545,6 @@ main {
   padding: 0.15em 0;
 }
 
-.contact a:hover {
-  background: var(--fore-color);
-  color: var(--back-color);
-}
 
 /* ---- Admin Styles ---- */
 .admin-container {
@@ -1267,19 +1245,13 @@ body:has(.detail-page.is-active) .footer {
 }
 
 .works-item-subtitle {
-  font-size: var(--small-size);
+  font-size: calc(var(--font-size) * 0.8);
   font-weight: 400;
   margin-top: 0.25em;
   line-height: 1;
   padding: 0.15em 0;
 }
 
-
-.works-item:hover .works-item-title,
-.works-item:hover .works-item-subtitle {
-  background: var(--fore-color);
-  color: var(--back-color);
-}
 
 .detail-page.is-active {
   display: block;
@@ -1334,10 +1306,6 @@ body:has(.detail-page.is-active) .footer {
   white-space: nowrap;
 }
 
-.detail-page .project-title:hover {
-  background: var(--fore-color);
-  color: var(--back-color);
-}
 
 .detail-page .project-title.in-project-info {
   position: static;
@@ -1365,10 +1333,9 @@ body:has(.detail-page.is-active) .footer {
   position: sticky;
   top: var(--nav-h);
   order: 2;
-  flex: 1 1 0;
+  flex: 0 0 auto;
   align-self: flex-start;
-  width: auto;
-  max-width: 25vw;
+  width: min(280px, 25vw);
   margin-left: auto;
   padding: 0 var(--edge-gap) 0 0;
 }
@@ -1389,13 +1356,15 @@ body:has(.detail-page.is-active) .footer {
   padding: 0.15em 4px;
   background: transparent;
   color: var(--fore-color);
+  font-size: calc(var(--font-size) * 0.8);
 }
 
 .detail-page .album-container {
   order: 1;
-  width: 70vw;
-  max-width: none;
-  flex: 0 0 70vw;
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  max-width: calc(100vw - 2 * var(--edge-gap) - 280px);
   padding: 0 var(--edge-gap);
 }
 
@@ -1505,10 +1474,6 @@ body:has(.detail-page.is-active) .footer {
   pointer-events: auto;
 }
 
-.detail-page .detail-next-action:hover {
-  background: var(--fore-color);
-  color: var(--back-color);
-}
 
 @media (orientation: landscape) {
   .works-grid {
@@ -1555,6 +1520,7 @@ body:has(.detail-page.is-active) .footer {
   .detail-page .album-container {
     order: 1;
     width: 100%;
+    max-width: 100%;
     flex-basis: auto;
     padding: 0 var(--edge-gap);
   }
@@ -1596,3 +1562,47 @@ body:has(.detail-page.is-active) .footer {
     bottom: 0;
   }
 }
+
+
+/* ============================================================
+   LARGE SCREENS (2K / 4K) — maximise image display resolution
+   ============================================================ */
+@media (min-width: 2560px) {
+  /* About avatar: wider container on large screens */
+  .avatar-container {
+    width: 65vw;
+    flex: 0 0 65vw;
+  }
+}
+
+@media (min-width: 3840px) {
+  /* Album and sidebar: give album even more room on 4K */
+  .detail-page .album-container {
+    max-width: calc(100vw - 2 * var(--edge-gap) - 260px);
+  }
+
+  .detail-page .project-info-sidebar {
+    width: min(260px, 20vw);
+  }
+}
+
+/* ---- Unified hover invert ---- */
+.hover-invert {
+  transition: background-color 0.28s ease, color 0.28s ease;
+  font-weight: 400 !important;
+}
+
+.hover-invert:hover,
+.hover-invert.is-active {
+  background: var(--fore-color);
+  color: var(--back-color);
+  font-weight: 700 !important;
+}
+
+/* Works grid: parent-triggered hover inversion */
+.works-item:hover .hover-invert {
+  background: var(--fore-color);
+  color: var(--back-color);
+  font-weight: 700 !important;
+}
+

@@ -21,8 +21,8 @@ export default function WorksGrid({ projects }: { projects: Project[] }) {
                 <ImageLoader src={project.thumbUrl} alt={project.titleZh} className="works-item-image" />
               </div>
               <div className="works-item-text">
-                <h2 className="works-item-title">{project.titleZh}</h2>
-                <h3 className="works-item-subtitle">
+                <h2 className="works-item-title hover-invert">{project.titleZh}</h2>
+                <h3 className="works-item-subtitle hover-invert">
                   {project.design} / {project.city}
                 </h3>
               </div>

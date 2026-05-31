@@ -41,7 +41,7 @@ export default function DetailNextAction({ nextProject }: DetailNextActionProps)
 
   return (
     <Link
-      className={`detail-next-action${visible ? " is-visible" : ""}`}
+      className={`detail-next-action hover-invert${visible ? " is-visible" : ""}`}
       href={`/works/${nextProject.slug}`}
       aria-label={`下一个项目：${nextProject.titleZh}`}
       aria-hidden={!visible}

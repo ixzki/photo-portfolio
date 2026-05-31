@@ -48,7 +48,7 @@ export default function FeatureStrip({ features }: { features: FeatureItem[] }) 
                   className="features-image"
                   priority={item.order === 0}
                 />
-                <div className="features-title">{title} &gt;&gt;</div>
+                <div className="features-title hover-invert is-active">{title} {'>>'}</div>
               </div>
             </Link>
           );

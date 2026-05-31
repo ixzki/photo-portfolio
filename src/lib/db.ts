@@ -305,7 +305,21 @@ export async function getFeatures(): Promise<FeatureItem[]> {
   const rows = await sql(
     "SELECT data FROM portfolio_features ORDER BY order_index ASC"
   ) as Array<{ data: FeatureItem }>;
-  return rows.map((r) => normalizeFeature(r.data));
+  const features = rows.map((r) => normalizeFeature(r.data));
+
+  // Resolve latest project titles and covers for project-type features
+  const allProjects = await getAllProjects();
+  const projectBySlug = new Map(allProjects.map((p) => [p.slug, p]));
+
+  return features.map((f) => {
+    if (f.type === "project" && f.projectSlug) {
+      const project = projectBySlug.get(f.projectSlug);
+      if (project) {
+        return { ...f, projectTitle: project.titleZh, projectCoverUrl: project.coverUrl };
+      }
+    }
+    return f;
+  });
 }
 
 export async function addFeature(input: Omit<FeatureItem, "id">): Promise<FeatureItem> {

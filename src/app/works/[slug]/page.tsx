@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 function ProjectInfo({ project, includeTitle = true }: { project: Project; includeTitle?: boolean }) {
   return (
     <div className="project-info">
-      {includeTitle && <h2 className="project-title in-project-info">{project.titleZh}</h2>}
+      {includeTitle && <h2 className="project-title in-project-info hover-invert is-active">{project.titleZh}</h2>}
       <p>{project.design}</p>
       <p>{project.city}</p>
       <p>{project.time}</p>
@@ -33,7 +33,7 @@ export default async function DetailPage({ params }: { params: Promise<{ slug: s
         <ImageLoader src={project.coverUrl} alt={project.titleZh} className="cover-image" priority />
 
         <div className="project-title-container">
-          <h1 className="project-title">{project.titleZh}</h1>
+          <h1 className="project-title hover-invert is-active">{project.titleZh}</h1>
         </div>
       </div>
 

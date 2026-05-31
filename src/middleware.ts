@@ -9,8 +9,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // If no DATABASE_URL, redirect to setup
-  if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
+  // If no DATABASE_URL, redirect to setup (skip in dev — seed data fallback)
+  if (
+    process.env.NODE_ENV !== "development" &&
+    !process.env.DATABASE_URL &&
+    !process.env.POSTGRES_URL
+  ) {
     return NextResponse.redirect(new URL("/setup", request.url));
   }
 
