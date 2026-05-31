@@ -1575,7 +1575,7 @@ body:has(.detail-page.is-active) .footer {
     width: 100%;
     min-width: auto;
     height: auto;
-    padding: 0 var(--edge-gap) calc(var(--edge-gap) * 2);
+    padding: 0 var(--edge-gap) calc(var(--edge-gap) * 0.5);
     background: transparent !important;
     color: var(--fore-color) !important;
     font-weight: 500 !important;
