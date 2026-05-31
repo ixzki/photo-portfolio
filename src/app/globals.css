@@ -1117,7 +1117,7 @@ main {
   .project-footer-container {
     order: 2;
     display: block;
-    padding: 0 var(--edge-gap) calc(var(--nav-h) + var(--edge-gap));
+    padding: 0 var(--edge-gap) var(--edge-gap);
   }
 
   .project-footer-info .project-info,
