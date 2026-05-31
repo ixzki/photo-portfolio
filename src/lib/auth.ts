@@ -4,10 +4,8 @@ import { createHmac, timingSafeEqual } from "crypto";
 
 const AUTH_COOKIE = "admin_auth";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
-const AUTH_SECRET = process.env.AUTH_SECRET || ADMIN_PASSWORD;
-
 function sign(value: string) {
-  return createHmac("sha256", AUTH_SECRET).update(value).digest("hex");
+  return createHmac("sha256", ADMIN_PASSWORD).update(value).digest("hex");
 }
 
 function tokenValue() {

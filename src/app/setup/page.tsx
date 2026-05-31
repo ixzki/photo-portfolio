@@ -52,10 +52,6 @@ export default function SetupPage() {
               <td style={{ padding: "8px 12px", borderBottom: "1px solid #e2e8f0", fontFamily: "monospace" }}>ADMIN_PASSWORD</td>
               <td style={{ padding: "8px 12px", borderBottom: "1px solid #e2e8f0", fontSize: 12, color: "#718096" }}>你选择的后台密码</td>
             </tr>
-            <tr>
-              <td style={{ padding: "8px 12px", borderBottom: "1px solid #e2e8f0", fontFamily: "monospace" }}>AUTH_SECRET</td>
-              <td style={{ padding: "8px 12px", borderBottom: "1px solid #e2e8f0", fontSize: 12, color: "#718096" }}>随机密钥（建议 32 位以上）</td>
-            </tr>
           </tbody>
         </table>
       </div>
