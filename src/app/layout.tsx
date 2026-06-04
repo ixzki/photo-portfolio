@@ -4,10 +4,37 @@ import Footer from "@/components/Footer";
 import { getSettings } from "@/lib/db";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "摄影作品集",
-  description: "个人摄影作品集",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const settings = await getSettings();
+    const description = (settings.aboutText || "个人摄影作品集").split("\n").filter(Boolean)[0] || "个人摄影作品集";
+
+    return {
+      title: {
+        default: settings.siteName,
+        template: `%s | ${settings.siteName}`,
+      },
+      description,
+      openGraph: {
+        title: settings.siteName,
+        description,
+        type: "website",
+        images: settings.avatarUrl ? [{ url: settings.avatarUrl, alt: settings.siteName }] : undefined,
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: settings.siteName,
+        description,
+        images: settings.avatarUrl ? [settings.avatarUrl] : undefined,
+      },
+    };
+  } catch {
+    return {
+      title: "摄影作品集",
+      description: "个人摄影作品集",
+    };
+  }
+}
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   let siteName = "摄影作品集";
@@ -20,7 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     copyright = settings.copyright;
     icp = settings.icp;
   } catch {
-    // Settings not available (no DB), use defaults
+    // Settings not available, use defaults.
   }
 
   return (

@@ -59,8 +59,9 @@ export interface Project {
   city: string;
   time: string;             // 时间（替代了英文标题、年份、状态）
   equipment: string;        // 设备器材
-  coverUrl: string;
-  thumbUrl: string;
+  featureUrl?: string;      // 首页精选图
+  coverUrl: string;         // 项目详情首屏大图
+  thumbUrl: string;         // works 页面缩略图
   coverW: number;
   coverH: number;
   thumbW: number;
@@ -68,6 +69,19 @@ export interface Project {
   order: number;
   visible: boolean;
   rows: Row[];
+}
+
+// ============================================================
+// 媒体库
+// ============================================================
+export interface MediaItem {
+  id: string;
+  url: string;
+  title: string;
+  alt: string | null;
+  width: number;
+  height: number;
+  createdAt: string;
 }
 
 // ============================================================

@@ -27,7 +27,13 @@ export default function AboutPageClient({ settings }: { settings: Settings }) {
       aria-label="关于摄影师"
     >
       <div className="avatar-container">
-        <ImageLoader src={settings.avatarUrl} alt="关于" className="avatar load-fade" priority />
+        <ImageLoader
+          src={settings.avatarUrl}
+          alt="关于"
+          className="avatar load-fade"
+          priority
+          sizes="(orientation: portrait) 100vw, 65vw"
+        />
       </div>
       <div className="about-text-container">
         <div className="about-text">

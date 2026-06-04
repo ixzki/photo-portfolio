@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { getAllProjects, getFeatures } from "@/lib/db";
+import { getAllProjects, getFeatures, getMediaItems } from "@/lib/db";
 
 export default async function AdminDashboard() {
-  const projects = await getAllProjects();
-  const features = await getFeatures();
+  const [projects, features, media] = await Promise.all([getAllProjects(), getFeatures(), getMediaItems()]);
   const visible = projects.filter((project) => project.visible).length;
-  const hidden = projects.filter((project) => !project.visible).length;
+  const drafts = projects.filter((project) => !project.visible).length;
+  const featuredSlugs = new Set(features.filter((feature) => feature.type === "project").map((feature) => feature.projectSlug));
 
   return (
     <div>
@@ -20,12 +20,16 @@ export default async function AdminDashboard() {
           <span className="admin-stat-label">已发布</span>
         </div>
         <div className="admin-stat-card">
-          <span className="admin-stat-number">{hidden}</span>
-          <span className="admin-stat-label">已隐藏</span>
+          <span className="admin-stat-number">{drafts}</span>
+          <span className="admin-stat-label">草稿</span>
         </div>
         <div className="admin-stat-card">
           <span className="admin-stat-number">{features.length}</span>
           <span className="admin-stat-label">首页项</span>
+        </div>
+        <div className="admin-stat-card">
+          <span className="admin-stat-number">{media.length}</span>
+          <span className="admin-stat-label">媒体库</span>
         </div>
       </div>
 
@@ -45,10 +49,15 @@ export default async function AdminDashboard() {
           {projects.map((project) => (
             <tr key={project.id}>
               <td>{project.order}</td>
-              <td><img className="loaded" src={project.thumbUrl} alt={project.titleZh} style={{ width: 60, height: 40, objectFit: "cover" }} /></td>
+              <td><img className="loaded admin-table-thumb" src={project.thumbUrl} alt={project.titleZh} /></td>
               <td>{project.titleZh}</td>
               <td>{project.design}</td>
-              <td>{project.visible ? "发布" : "隐藏"}</td>
+              <td>
+                <span className={`admin-status-badge ${project.visible ? "is-live" : "is-draft"}`}>
+                  {project.visible ? "已发布" : "草稿"}
+                </span>
+                {featuredSlugs.has(project.slug) && <span className="admin-status-badge is-featured">首页精选</span>}
+              </td>
               <td><Link href={`/admin/projects/${project.slug}`} className="admin-btn-sm">编辑</Link></td>
             </tr>
           ))}

@@ -3,9 +3,18 @@ import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 
 const AUTH_COOKIE = "admin_auth";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+
+function adminPassword() {
+  const password = process.env.ADMIN_PASSWORD;
+  if (password) return password;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("ADMIN_PASSWORD must be set in production.");
+  }
+  return "admin123";
+}
+
 function sign(value: string) {
-  return createHmac("sha256", ADMIN_PASSWORD).update(value).digest("hex");
+  return createHmac("sha256", adminPassword()).update(value).digest("hex");
 }
 
 function tokenValue() {
@@ -25,7 +34,7 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 export function verifyPassword(password: string): boolean {
-  return safeEqual(password, ADMIN_PASSWORD);
+  return safeEqual(password, adminPassword());
 }
 
 export async function setAuthCookie() {

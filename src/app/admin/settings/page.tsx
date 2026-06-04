@@ -86,13 +86,13 @@ export default function AdminSettingsPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+      <div className="admin-page-header">
         <h1 className="admin-heading" style={{ margin: 0 }}>站点设置</h1>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="admin-actions">
           <button onClick={handleSave} disabled={saving} className="admin-btn">
             {saving ? "保存中..." : "保存"}
           </button>
-          {message && <span style={{ padding: "8px 16px", background: "#c6f6d5", borderRadius: 4 }}>{message}</span>}
+          {message && <span className={`admin-message${message.includes("失败") ? " is-error" : ""}`}>{message}</span>}
         </div>
       </div>
 
@@ -112,7 +112,7 @@ export default function AdminSettingsPage() {
           />
         </div>
         <div className="admin-form-group">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div className="admin-section-title-row" style={{ marginTop: 0, marginBottom: 8 }}>
             <label style={{ margin: 0 }}>联系方式</label>
             <button type="button" onClick={addContact} className="admin-btn-sm">添加一项</button>
           </div>

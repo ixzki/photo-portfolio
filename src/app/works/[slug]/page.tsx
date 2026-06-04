@@ -1,10 +1,52 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import DetailNextAction from "@/components/DetailNextAction";
 import ImageLoader from "@/components/ImageLoader";
-import { getProjects, getProjectBySlug } from "@/lib/db";
+import { getProjects, getVisibleProjectBySlug } from "@/lib/db";
 import { Project, Row } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+type DetailPageProps = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: DetailPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const project = await getVisibleProjectBySlug(slug);
+  if (!project) {
+    return {
+      title: "作品未找到",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const description = [project.design, project.city, project.time, project.equipment]
+    .filter(Boolean)
+    .join(" / ");
+
+  return {
+    title: project.titleZh,
+    description,
+    openGraph: {
+      title: project.titleZh,
+      description,
+      type: "article",
+      images: [
+        {
+          url: project.coverUrl,
+          width: project.coverW,
+          height: project.coverH,
+          alt: project.titleZh,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: project.titleZh,
+      description,
+      images: [project.coverUrl],
+    },
+  };
+}
 
 function ProjectInfo({ project, includeTitle = true }: { project: Project; includeTitle?: boolean }) {
   return (
@@ -18,19 +60,29 @@ function ProjectInfo({ project, includeTitle = true }: { project: Project; inclu
   );
 }
 
-export default async function DetailPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function DetailPage({ params }: DetailPageProps) {
   const { slug } = await params;
-  const project = await getProjectBySlug(slug);
+  const project = await getVisibleProjectBySlug(slug);
   if (!project) notFound();
 
   const allProjects = await getProjects();
   const currentIndex = allProjects.findIndex((p) => p.slug === slug);
-  const nextProject = allProjects[(currentIndex + 1) % allProjects.length];
+  const nextProject = allProjects.length > 0
+    ? allProjects[(currentIndex >= 0 ? currentIndex + 1 : 0) % allProjects.length]
+    : null;
 
   return (
     <section className="view detail-page is-active" id="detail" data-view="detail" aria-label="项目详情">
       <div className="cover">
-        <ImageLoader src={project.coverUrl} alt={project.titleZh} className="cover-image" priority />
+        <ImageLoader
+          src={project.coverUrl}
+          alt={project.titleZh}
+          className="cover-image"
+          priority
+          width={project.coverW}
+          height={project.coverH}
+          sizes="100vw"
+        />
 
         <div className="project-title-container">
           <h1 className="project-title hover-invert is-active">{project.titleZh}</h1>
@@ -47,7 +99,14 @@ export default async function DetailPage({ params }: { params: Promise<{ slug: s
             <div key={row.id} className={`detail-row ${row.layout}`}>
               {row.images.map((image) => (
                 <figure key={image.id} className="detail-image-frame" style={{ aspectRatio: `${image.width} / ${image.height}` }}>
-                  <ImageLoader src={image.url} alt={image.alt || project.titleZh} className="detail-image" />
+                  <ImageLoader
+                    src={image.url}
+                    alt={image.alt || project.titleZh}
+                    className="detail-image"
+                    width={image.width}
+                    height={image.height}
+                    sizes="(orientation: portrait) 100vw, 70vw"
+                  />
                 </figure>
               ))}
             </div>
@@ -61,7 +120,7 @@ export default async function DetailPage({ params }: { params: Promise<{ slug: s
         </div>
       </div>
 
-      <DetailNextAction nextProject={{ slug: nextProject.slug, titleZh: nextProject.titleZh }} />
+      {nextProject && <DetailNextAction nextProject={{ slug: nextProject.slug, titleZh: nextProject.titleZh }} />}
     </section>
   );
 }

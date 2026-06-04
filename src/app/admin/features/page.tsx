@@ -1,23 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AdminImageField from "@/components/AdminImageField";
 import type { FeatureItem } from "@/lib/types";
 
-interface Project {
+interface ProjectOption {
   id: string;
   slug: string;
   titleZh: string;
+  featureUrl?: string;
   coverUrl: string;
+  visible: boolean;
 }
 
 type FeatureCreatePayload = Omit<FeatureItem, "id">;
 
 export default function AdminFeaturesPage() {
   const [features, setFeatures] = useState<FeatureItem[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [addType, setAddType] = useState<"project" | "image">("project");
+  const [message, setMessage] = useState("");
   const [newFeature, setNewFeature] = useState({
     projectSlug: "",
     projectTitle: "",
@@ -26,17 +30,34 @@ export default function AdminFeaturesPage() {
     imageTitle: "",
   });
 
+  const projectBySlug = useMemo(() => new Map(projects.map((project) => [project.slug, project])), [projects]);
+
+  const loadFeatures = async () => {
+    const res = await fetch("/api/features");
+    if (res.ok) setFeatures(await res.json());
+  };
+
   useEffect(() => {
+    let active = true;
     fetch("/api/projects").then((r) => r.json()).then((data) => {
-      if (Array.isArray(data)) setProjects(data);
+      if (active && Array.isArray(data)) setProjects(data);
     });
-    fetch("/api/features").then((r) => r.json()).then(setFeatures);
+    fetch("/api/features").then((r) => r.json()).then((data) => {
+      if (active && Array.isArray(data)) setFeatures(data);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const loadFeatures = () => fetch("/api/features").then((r) => r.json()).then(setFeatures);
+  const showTransientMessage = (nextMessage: string) => {
+    setMessage(nextMessage);
+    window.setTimeout(() => setMessage(""), 2000);
+  };
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAdd = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setMessage("");
     const body: FeatureCreatePayload = { type: addType, order: features.length };
     if (addType === "project") {
       body.projectSlug = newFeature.projectSlug;
@@ -46,12 +67,23 @@ export default function AdminFeaturesPage() {
       body.imageUrl = newFeature.imageUrl;
       body.imageTitle = newFeature.imageTitle;
     }
-    const res = await fetch("/api/features", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (res.ok) {
-      await loadFeatures();
-      setShowAdd(false);
-      setNewFeature({ projectSlug: "", projectTitle: "", projectCoverUrl: "", imageUrl: "", imageTitle: "" });
+
+    const res = await fetch("/api/features", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: "添加失败" }));
+      setMessage(error.error || "添加失败");
+      return;
     }
+
+    await loadFeatures();
+    setShowAdd(false);
+    setNewFeature({ projectSlug: "", projectTitle: "", projectCoverUrl: "", imageUrl: "", imageTitle: "" });
+    showTransientMessage("已添加精选");
   };
 
   const handleDelete = async (id: string) => {
@@ -60,49 +92,72 @@ export default function AdminFeaturesPage() {
     await loadFeatures();
   };
 
-  const moveUp = async (id: string) => {
-    const idx = features.findIndex((f) => f.id === id);
-    if (idx <= 0) return;
-    const newIds = features.map((f) => f.id);
-    [newIds[idx - 1], newIds[idx]] = [newIds[idx], newIds[idx - 1]];
-    await fetch("/api/features/reorder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: newIds }) });
+  const persistOrder = async (nextFeatures: FeatureItem[]) => {
+    const res = await fetch("/api/features/reorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: nextFeatures.map((feature) => feature.id) }),
+    });
+
+    if (!res.ok) {
+      showTransientMessage("排序保存失败");
+      return;
+    }
+
     await loadFeatures();
+    showTransientMessage("排序已保存");
   };
 
-  const moveDown = async (id: string) => {
-    const idx = features.findIndex((f) => f.id === id);
-    if (idx >= features.length - 1) return;
-    const newIds = features.map((f) => f.id);
-    [newIds[idx], newIds[idx + 1]] = [newIds[idx + 1], newIds[idx]];
-    await fetch("/api/features/reorder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: newIds }) });
-    await loadFeatures();
+  const moveDraggedBefore = (targetId: string) => {
+    if (!draggedId || draggedId === targetId) return;
+    const current = [...features];
+    const from = current.findIndex((feature) => feature.id === draggedId);
+    const to = current.findIndex((feature) => feature.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = current.splice(from, 1);
+    current.splice(to, 0, moved);
+    setFeatures(current);
+  };
+
+  const finishDrag = async () => {
+    setDraggedId(null);
+    await persistOrder(features);
   };
 
   const handleProjectSelect = (slug: string) => {
-    const p = projects.find((pr) => pr.slug === slug);
-    if (p) {
-      setNewFeature((prev) => ({ ...prev, projectSlug: p.slug, projectTitle: p.titleZh, projectCoverUrl: p.coverUrl }));
-    }
+    const project = projects.find((item) => item.slug === slug);
+    if (!project) return;
+    setNewFeature((prev) => ({
+      ...prev,
+      projectSlug: project.slug,
+      projectTitle: project.titleZh,
+      projectCoverUrl: project.featureUrl || project.coverUrl,
+    }));
   };
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+      <div className="admin-page-header">
         <h1 className="admin-heading" style={{ margin: 0 }}>首页精选</h1>
-        <button onClick={() => setShowAdd(!showAdd)} className="admin-btn">
-          {showAdd ? "取消" : "+ 添加精选"}
-        </button>
+        <div className="admin-actions">
+          {message && <span className={`admin-message${message.includes("失败") ? " is-error" : ""}`}>{message}</span>}
+          <button onClick={() => setShowAdd(!showAdd)} className="admin-btn">
+            {showAdd ? "取消" : "+ 添加精选"}
+          </button>
+        </div>
       </div>
 
       {showAdd && (
-        <div style={{ background: "#f7fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 20, marginBottom: 24 }}>
-          <h3 style={{ margin: "0 0 16px" }}>新增首页项</h3>
-          <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-              <input type="radio" checked={addType === "project"} onChange={() => setAddType("project")} /> 关联项目（可点击打开详情页）
+        <div className="admin-panel">
+          <h3>新增首页项</h3>
+          <div className="admin-segmented">
+            <label>
+              <input type="radio" checked={addType === "project"} onChange={() => setAddType("project")} />
+              关联项目
             </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-              <input type="radio" checked={addType === "image"} onChange={() => setAddType("image")} /> 单张图片（仅展示标题）
+            <label>
+              <input type="radio" checked={addType === "image"} onChange={() => setAddType("image")} />
+              单张图片
             </label>
           </div>
 
@@ -114,21 +169,25 @@ export default function AdminFeaturesPage() {
                   <select
                     className="admin-input"
                     value={newFeature.projectSlug}
-                    onChange={(e) => handleProjectSelect(e.target.value)}
+                    onChange={(event) => handleProjectSelect(event.target.value)}
                     required
                   >
                     <option value="">-- 请选择 --</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.slug}>{p.titleZh}</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.slug}>
+                        {project.titleZh} {project.visible ? "" : "（草稿）"}
+                      </option>
                     ))}
                   </select>
                 </div>
                 {newFeature.projectSlug && (
-                  <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
-                    <img className="loaded"  src={newFeature.projectCoverUrl} alt="" style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 4 }} />
+                  <div className="admin-feature-preview">
+                    <img className="loaded" src={newFeature.projectCoverUrl} alt="" />
                     <div>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{newFeature.projectTitle}</p>
-                      <p style={{ margin: "4px 0 0", fontSize: 13, color: "#718096" }}>slug: {newFeature.projectSlug}</p>
+                      <p>{newFeature.projectTitle}</p>
+                      <span className={`admin-status-badge ${projectBySlug.get(newFeature.projectSlug)?.visible ? "is-live" : "is-draft"}`}>
+                        {projectBySlug.get(newFeature.projectSlug)?.visible ? "已发布" : "草稿"}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -139,60 +198,69 @@ export default function AdminFeaturesPage() {
                   <AdminImageField
                     label="图片"
                     value={newFeature.imageUrl}
-                    onChange={(value) => setNewFeature((p) => ({ ...p, imageUrl: value }))}
-                    required
+                    onChange={(value) => setNewFeature((current) => ({ ...current, imageUrl: value }))}
                   />
                 </div>
                 <div className="admin-form-group">
                   <label>显示标题</label>
-                  <input className="admin-input" value={newFeature.imageTitle} onChange={(e) => setNewFeature((p) => ({ ...p, imageTitle: e.target.value }))} placeholder="标题文字" required />
+                  <input
+                    className="admin-input"
+                    value={newFeature.imageTitle}
+                    onChange={(event) => setNewFeature((current) => ({ ...current, imageTitle: event.target.value }))}
+                    required
+                  />
                 </div>
               </>
             )}
-            <button type="submit" className="admin-btn" style={{ marginTop: 16 }}>确认添加</button>
+            <button type="submit" className="admin-btn">确认添加</button>
           </form>
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {features.map((item, idx) => (
-          <div
-            key={item.id}
-            style={{
-              display: "flex", alignItems: "center", gap: 16,
-              padding: "8px 12px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8,
-            }}
-          >
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <button onClick={() => moveUp(item.id)} disabled={idx === 0} className="admin-btn-sm" style={{ padding: "2px 8px", fontSize: 11 }}>↑</button>
-              <button onClick={() => moveDown(item.id)} disabled={idx === features.length - 1} className="admin-btn-sm" style={{ padding: "2px 8px", fontSize: 11 }}>↓</button>
-            </div>
-            <span style={{ fontSize: 13, color: "#718096", minWidth: 30 }}>#{item.order}</span>
-            <img className="loaded" 
-              src={item.type === "project" ? item.projectCoverUrl : item.imageUrl}
-              alt=""
-              style={{ width: 80, height: 53, objectFit: "cover", borderRadius: 4 }}
-            />
-            <div style={{ flex: 1 }}>
-              <span style={{ fontWeight: 600, fontSize: 14 }}>
-                {item.type === "project" ? item.projectTitle : item.imageTitle}
+      <div className="admin-feature-list">
+        {features.map((item, index) => {
+          const project = item.type === "project" && item.projectSlug ? projectBySlug.get(item.projectSlug) : null;
+          return (
+            <div
+              key={item.id}
+              onDragOver={(event) => {
+                if (!draggedId || draggedId === item.id) return;
+                event.preventDefault();
+                moveDraggedBefore(item.id);
+              }}
+              className={`admin-feature-card${draggedId === item.id ? " admin-dragging" : ""}`}
+            >
+              <span
+                className="admin-drag-handle"
+                draggable
+                title="拖动排序"
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = "move";
+                  setDraggedId(item.id);
+                }}
+                onDragEnd={() => void finishDrag()}
+              >
+                ::
               </span>
-              <span style={{
-                marginLeft: 8, padding: "2px 8px", borderRadius: 4, fontSize: 11,
-                background: item.type === "project" ? "#ebf8ff" : "#faf5ff",
-                color: item.type === "project" ? "#2b6cb0" : "#6b46c1",
-              }}>
-                {item.type === "project" ? "关联项目" : "单张图片"}
-              </span>
+              <span className="admin-muted">#{index}</span>
+              <img className="loaded" src={item.type === "project" ? item.projectCoverUrl : item.imageUrl} alt="" />
+              <div className="admin-feature-card-body">
+                <strong>{item.type === "project" ? item.projectTitle : item.imageTitle}</strong>
+                <div>
+                  <span className="admin-status-badge is-featured">{item.type === "project" ? "关联项目" : "单张图片"}</span>
+                  {project && (
+                    <span className={`admin-status-badge ${project.visible ? "is-live" : "is-draft"}`}>
+                      {project.visible ? "公开可见" : "草稿不公开"}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => handleDelete(item.id)} className="admin-btn-sm admin-btn-danger">删除</button>
             </div>
-            <button onClick={() => handleDelete(item.id)} className="admin-btn-sm" style={{ background: "#e53e3e" }}>删除</button>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      <p style={{ fontSize: 13, color: "#a0aec0", marginTop: 12 }}>
-        首页按上方顺序从左到右展示。拖动顺序通过 ↑ ↓ 按钮调整。
-        <br />&quot;关联项目&quot;：点击后跳转到作品详情页；&quot;单张图片&quot;：仅展示图片和标题，不可点击。
-      </p>
+      <p className="admin-muted" style={{ marginTop: 12 }}>拖动精选项即可调整首页从左到右的展示顺序。</p>
     </div>
   );
 }

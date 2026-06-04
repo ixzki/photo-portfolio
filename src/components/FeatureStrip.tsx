@@ -47,6 +47,7 @@ export default function FeatureStrip({ features }: { features: FeatureItem[] }) 
                   alt={title || ""}
                   className="features-image"
                   priority={item.order === 0}
+                  sizes="(orientation: portrait) 100vw, 70vw"
                 />
                 <div className="features-title hover-invert is-active">{title} {'>>'}</div>
               </div>

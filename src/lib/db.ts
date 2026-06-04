@@ -1,10 +1,9 @@
 import { neon } from "@neondatabase/serverless";
 import { seedFeatures, seedProjects, seedSettings } from "./data";
-import { FeatureItem, Image, LayoutType, Project, Row, SiteSettings } from "./types";
+import { FeatureItem, Image, LayoutType, MediaItem, Project, Row, SiteSettings } from "./types";
 
 type SqlClient = ReturnType<typeof neon>;
 type ProjectCreateInput = Omit<Project, "id" | "rows"> & { rows?: Omit<Row, "id" | "images">[] };
-
 let sqlClient: SqlClient | null = null;
 let schemaReady: Promise<void> | null = null;
 
@@ -35,8 +34,12 @@ function normalizeSettings(settings: Partial<SiteSettings>): SiteSettings {
 }
 
 function normalizeProject(project: Project): Project {
+  const coverUrl = project.coverUrl || project.thumbUrl || "";
   return {
     ...project,
+    coverUrl,
+    thumbUrl: project.thumbUrl || coverUrl,
+    featureUrl: project.featureUrl || coverUrl,
     coverW: Number(project.coverW) || 1440,
     coverH: Number(project.coverH) || 960,
     thumbW: Number(project.thumbW) || 1200,
@@ -62,16 +65,39 @@ function normalizeFeature(feature: FeatureItem): FeatureItem {
   return { ...feature, order: Number(feature.order) || 0 };
 }
 
+function normalizeMediaItem(item: MediaItem): MediaItem {
+  return {
+    ...item,
+    title: item.title || item.alt || "",
+    alt: item.alt || null,
+    width: Number(item.width) || 1440,
+    height: Number(item.height) || 960,
+    createdAt: item.createdAt || new Date().toISOString(),
+  };
+}
+
+async function createTableIfMissing(sql: SqlClient, statement: string) {
+  try {
+    await sql(statement);
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : "";
+    if (code === "23505" || code === "42P07" || code === "42710") return;
+    throw error;
+  }
+}
+
 async function ensureSchema(sql: SqlClient) {
   if (!schemaReady) {
     schemaReady = (async () => {
-      await sql(`
+      await createTableIfMissing(sql, `
         CREATE TABLE IF NOT EXISTS portfolio_settings (
           id TEXT PRIMARY KEY,
           data JSONB NOT NULL
         )
       `);
-      await sql(`
+      await createTableIfMissing(sql, `
         CREATE TABLE IF NOT EXISTS portfolio_projects (
           id TEXT PRIMARY KEY,
           slug TEXT UNIQUE NOT NULL,
@@ -80,10 +106,17 @@ async function ensureSchema(sql: SqlClient) {
           data JSONB NOT NULL
         )
       `);
-      await sql(`
+      await createTableIfMissing(sql, `
         CREATE TABLE IF NOT EXISTS portfolio_features (
           id TEXT PRIMARY KEY,
           order_index INTEGER NOT NULL DEFAULT 0,
+          data JSONB NOT NULL
+        )
+      `);
+      await createTableIfMissing(sql, `
+        CREATE TABLE IF NOT EXISTS portfolio_media (
+          id TEXT PRIMARY KEY,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           data JSONB NOT NULL
         )
       `);
@@ -91,7 +124,7 @@ async function ensureSchema(sql: SqlClient) {
       const settingsRows = await sql("SELECT COUNT(*)::text AS count FROM portfolio_settings") as Array<{ count: string }>;
       if (Number(settingsRows[0]?.count || 0) === 0) {
         await sql(
-          "INSERT INTO portfolio_settings (id, data) VALUES ($1, $2::jsonb)",
+          "INSERT INTO portfolio_settings (id, data) VALUES ($1, $2::jsonb) ON CONFLICT (id) DO NOTHING",
           ["default", JSON.stringify(normalizeSettings(seedSettings))],
         );
       }
@@ -100,7 +133,7 @@ async function ensureSchema(sql: SqlClient) {
       if (Number(projectRows[0]?.count || 0) === 0) {
         for (const project of seedProjects) {
           await sql(
-            "INSERT INTO portfolio_projects (id, slug, visible, order_index, data) VALUES ($1, $2, $3, $4, $5::jsonb)",
+            "INSERT INTO portfolio_projects (id, slug, visible, order_index, data) VALUES ($1, $2, $3, $4, $5::jsonb) ON CONFLICT (id) DO NOTHING",
             [project.id, project.slug, project.visible, project.order, JSON.stringify(normalizeProject(project))],
           );
         }
@@ -110,7 +143,7 @@ async function ensureSchema(sql: SqlClient) {
       if (Number(featureRows[0]?.count || 0) === 0) {
         for (const feature of seedFeatures) {
           await sql(
-            "INSERT INTO portfolio_features (id, order_index, data) VALUES ($1, $2, $3::jsonb)",
+            "INSERT INTO portfolio_features (id, order_index, data) VALUES ($1, $2, $3::jsonb) ON CONFLICT (id) DO NOTHING",
             [feature.id, feature.order, JSON.stringify(normalizeFeature(feature))],
           );
         }
@@ -180,6 +213,20 @@ export async function getProjectBySlug(slug: string): Promise<Project | null> {
   return rows[0] ? normalizeProject(rows[0].data) : null;
 }
 
+export async function getVisibleProjectBySlug(slug: string): Promise<Project | null> {
+  const sql = await db();
+  if (!sql) {
+    const project = seedProjects.find((p) => p.slug === slug && p.visible !== false);
+    return project ? normalizeProject(project) : null;
+  }
+
+  const rows = await sql(
+    "SELECT data FROM portfolio_projects WHERE slug = $1 AND visible = true LIMIT 1",
+    [slug],
+  ) as Array<{ data: Project }>;
+  return rows[0] ? normalizeProject(rows[0].data) : null;
+}
+
 export async function createProject(input: ProjectCreateInput): Promise<Project> {
   const project = normalizeProject({
     ...input,
@@ -190,7 +237,7 @@ export async function createProject(input: ProjectCreateInput): Promise<Project>
   });
 
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请在 Vercel 中设置 DATABASE_URL 环境变量");
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   await sql(
     "INSERT INTO portfolio_projects (id, slug, visible, order_index, data) VALUES ($1, $2, $3, $4, $5::jsonb)",
@@ -205,7 +252,7 @@ export async function updateProject(id: string, data: Partial<Project>): Promise
   const updated = normalizeProject({ ...current, ...data, id: current.id });
 
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置");
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   await sql(
     "UPDATE portfolio_projects SET slug = $1, visible = $2, order_index = $3, data = $4::jsonb WHERE id = $5",
@@ -216,10 +263,40 @@ export async function updateProject(id: string, data: Partial<Project>): Promise
 
 export async function deleteProject(id: string): Promise<boolean> {
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置");
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
+
+  const project = await getProjectById(id);
+  if (!project) return false;
 
   const rows = await sql("DELETE FROM portfolio_projects WHERE id = $1 RETURNING id", [id]) as Array<{ id: string }>;
-  return rows.length > 0;
+  if (rows.length === 0) return false;
+
+  await sql(
+    "DELETE FROM portfolio_features WHERE data->>'type' = 'project' AND data->>'projectSlug' = $1",
+    [project.slug],
+  );
+  return true;
+}
+
+export async function reorderProjects(ids: string[]): Promise<Project[]> {
+  const projects = await getAllProjects();
+  const reordered = ids
+    .map((id, order) => {
+      const project = projects.find((p) => p.id === id);
+      return project ? { ...project, order } : null;
+    })
+    .filter((project): project is Project => project !== null);
+
+  const sql = await db();
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
+
+  for (const project of reordered) {
+    await sql(
+      "UPDATE portfolio_projects SET order_index = $1, data = $2::jsonb WHERE id = $3",
+      [project.order, JSON.stringify(project), project.id],
+    );
+  }
+  return reordered;
 }
 
 export async function addRow(projectId: string, layout: LayoutType): Promise<Row | null> {
@@ -247,6 +324,25 @@ export async function deleteRow(projectId: string, rowId: string): Promise<boole
   if (nextRows.length === project.rows.length) return false;
   await updateProject(projectId, { rows: nextRows.map((row, order) => ({ ...row, order })) });
   return true;
+}
+
+export async function reorderRows(projectId: string, rowIds: string[]): Promise<Project | null> {
+  const project = await getProjectById(projectId);
+  if (!project) return null;
+  const rowById = new Map(project.rows.map((row) => [row.id, row]));
+  const orderedRows = rowIds
+    .map((rowId, order) => {
+      const row = rowById.get(rowId);
+      return row ? { ...row, order } : null;
+    })
+    .filter((row): row is Row => row !== null);
+
+  const missingRows = project.rows
+    .filter((row) => !rowIds.includes(row.id))
+    .map((row, index) => ({ ...row, order: orderedRows.length + index }));
+
+  const rows = [...orderedRows, ...missingRows];
+  return updateProject(projectId, { rows });
 }
 
 export async function addImage(projectId: string, rowId: string, image: Omit<Image, "id" | "order">): Promise<Image | null> {
@@ -297,15 +393,36 @@ export async function deleteImage(projectId: string, rowId: string, imageId: str
   return true;
 }
 
+export async function reorderImages(projectId: string, rowId: string, imageIds: string[]): Promise<Project | null> {
+  const project = await getProjectById(projectId);
+  if (!project) return null;
+
+  const rows = project.rows.map((row) => {
+    if (row.id !== rowId) return row;
+    const imageById = new Map(row.images.map((image) => [image.id, image]));
+    const orderedImages = imageIds
+      .map((imageId, order) => {
+        const image = imageById.get(imageId);
+        return image ? { ...image, order } : null;
+      })
+      .filter((image): image is Image => image !== null);
+    const missingImages = row.images
+      .filter((image) => !imageIds.includes(image.id))
+      .map((image, index) => ({ ...image, order: orderedImages.length + index }));
+    return { ...row, images: [...orderedImages, ...missingImages] };
+  });
+
+  return updateProject(projectId, { rows });
+}
+
 // ---- Features ----
 export async function getFeatures(): Promise<FeatureItem[]> {
   const sql = await db();
-  if (!sql) return seedFeatures.map(normalizeFeature);
-
-  const rows = await sql(
-    "SELECT data FROM portfolio_features ORDER BY order_index ASC"
-  ) as Array<{ data: FeatureItem }>;
-  const features = rows.map((r) => normalizeFeature(r.data));
+  const features = sql
+    ? (await sql(
+        "SELECT data FROM portfolio_features ORDER BY order_index ASC"
+      ) as Array<{ data: FeatureItem }>).map((r) => normalizeFeature(r.data))
+    : seedFeatures.map(normalizeFeature);
 
   // Resolve latest project titles and covers for project-type features
   const allProjects = await getAllProjects();
@@ -315,17 +432,33 @@ export async function getFeatures(): Promise<FeatureItem[]> {
     if (f.type === "project" && f.projectSlug) {
       const project = projectBySlug.get(f.projectSlug);
       if (project) {
-        return { ...f, projectTitle: project.titleZh, projectCoverUrl: project.coverUrl };
+        return { ...f, projectTitle: project.titleZh, projectCoverUrl: project.featureUrl || project.coverUrl };
       }
     }
     return f;
   });
 }
 
+export async function getPublicFeatures(): Promise<FeatureItem[]> {
+  const features = await getFeatures();
+  const visibleProjects = await getProjects();
+  const projectBySlug = new Map(visibleProjects.map((p) => [p.slug, p]));
+
+  return features
+    .map((feature) => {
+      if (feature.type !== "project") return feature;
+      if (!feature.projectSlug) return null;
+      const project = projectBySlug.get(feature.projectSlug);
+      if (!project) return null;
+      return { ...feature, projectTitle: project.titleZh, projectCoverUrl: project.featureUrl || project.coverUrl };
+    })
+    .filter((feature): feature is FeatureItem => feature !== null);
+}
+
 export async function addFeature(input: Omit<FeatureItem, "id">): Promise<FeatureItem> {
   const feature = normalizeFeature({ ...input, id: generateId() });
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置");
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   await sql(
     "INSERT INTO portfolio_features (id, order_index, data) VALUES ($1, $2, $3::jsonb)",
@@ -341,7 +474,7 @@ export async function updateFeature(id: string, data: Partial<FeatureItem>): Pro
   const updated = normalizeFeature({ ...current, ...data });
 
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置");
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   await sql(
     "UPDATE portfolio_features SET order_index = $1, data = $2::jsonb WHERE id = $3",
@@ -352,7 +485,7 @@ export async function updateFeature(id: string, data: Partial<FeatureItem>): Pro
 
 export async function deleteFeature(id: string): Promise<boolean> {
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置");
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   const rows = await sql("DELETE FROM portfolio_features WHERE id = $1 RETURNING id", [id]) as Array<{ id: string }>;
   return rows.length > 0;
@@ -368,7 +501,7 @@ export async function reorderFeatures(ids: string[]): Promise<FeatureItem[]> {
     .filter((f): f is FeatureItem => f !== null);
 
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置");
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   for (const feature of reordered) {
     await sql(
@@ -377,6 +510,58 @@ export async function reorderFeatures(ids: string[]): Promise<FeatureItem[]> {
     );
   }
   return reordered;
+}
+
+// ---- Media library ----
+export async function getMediaItems(): Promise<MediaItem[]> {
+  const sql = await db();
+  if (!sql) return [];
+
+  const rows = await sql(
+    "SELECT data FROM portfolio_media ORDER BY created_at DESC"
+  ) as Array<{ data: MediaItem }>;
+  return rows.map((row) => normalizeMediaItem(row.data));
+}
+
+export async function addMediaItem(input: Omit<MediaItem, "id" | "createdAt"> & { createdAt?: string }): Promise<MediaItem> {
+  const item = normalizeMediaItem({
+    ...input,
+    id: generateId(),
+    createdAt: input.createdAt || new Date().toISOString(),
+  });
+
+  const sql = await db();
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
+
+  await sql(
+    "INSERT INTO portfolio_media (id, created_at, data) VALUES ($1, $2, $3::jsonb)",
+    [item.id, item.createdAt, JSON.stringify(item)],
+  );
+  return item;
+}
+
+export async function updateMediaItem(id: string, data: Partial<MediaItem>): Promise<MediaItem | null> {
+  const items = await getMediaItems();
+  const current = items.find((item) => item.id === id);
+  if (!current) return null;
+  const updated = normalizeMediaItem({ ...current, ...data, id: current.id });
+
+  const sql = await db();
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
+
+  await sql(
+    "UPDATE portfolio_media SET data = $1::jsonb WHERE id = $2",
+    [JSON.stringify(updated), id],
+  );
+  return updated;
+}
+
+export async function deleteMediaItem(id: string): Promise<boolean> {
+  const sql = await db();
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
+
+  const rows = await sql("DELETE FROM portfolio_media WHERE id = $1 RETURNING id", [id]) as Array<{ id: string }>;
+  return rows.length > 0;
 }
 
 // ---- Settings ----
@@ -391,7 +576,7 @@ export async function getSettings(): Promise<SiteSettings> {
 export async function updateSettings(data: Partial<SiteSettings>): Promise<SiteSettings> {
   const updated = normalizeSettings({ ...(await getSettings()), ...data });
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置");
+  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   await sql(
     "INSERT INTO portfolio_settings (id, data) VALUES ('default', $1::jsonb) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data",

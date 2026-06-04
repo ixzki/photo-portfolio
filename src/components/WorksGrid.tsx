@@ -18,7 +18,14 @@ export default function WorksGrid({ projects }: { projects: Project[] }) {
                 className="works-item-image-container"
                 style={{ aspectRatio: `${project.thumbW} / ${project.thumbH}` }}
               >
-                <ImageLoader src={project.thumbUrl} alt={project.titleZh} className="works-item-image" />
+                <ImageLoader
+                  src={project.thumbUrl}
+                  alt={project.titleZh}
+                  className="works-item-image"
+                  width={project.thumbW}
+                  height={project.thumbH}
+                  sizes="(orientation: portrait) 50vw, 25vw"
+                />
               </div>
               <div className="works-item-text">
                 <h2 className="works-item-title hover-invert">{project.titleZh}</h2>

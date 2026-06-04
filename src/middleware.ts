@@ -13,7 +13,8 @@ export function middleware(request: NextRequest) {
   if (
     process.env.NODE_ENV !== "development" &&
     !process.env.DATABASE_URL &&
-    !process.env.POSTGRES_URL
+    !process.env.POSTGRES_URL &&
+    !process.env.POSTGRES_PRISMA_URL
   ) {
     return NextResponse.redirect(new URL("/setup", request.url));
   }

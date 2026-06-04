@@ -1,9 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import AdminImageField from "@/components/AdminImageField";
-import { LAYOUT_OPTIONS, Image, LayoutType, Project } from "@/lib/types";
+import { LAYOUT_OPTIONS, FeatureItem, Image, LayoutType, Project } from "@/lib/types";
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function validateProject(project: Project) {
+  const errors: string[] = [];
+  if (!project.slug.trim()) errors.push("请填写 slug。");
+  if (project.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(project.slug)) {
+    errors.push("slug 只能使用小写字母、数字和连字符。");
+  }
+  if (!project.titleZh.trim()) errors.push("请填写标题。");
+  if (project.featureUrl?.trim() && !isHttpUrl(project.featureUrl)) errors.push("请填写有效的首页精选图 URL。");
+  if (!isHttpUrl(project.coverUrl)) errors.push("请填写有效的封面图 URL。");
+  if (!isHttpUrl(project.thumbUrl)) errors.push("请填写有效的缩略图 URL。");
+  return errors;
+}
+
+function moveById<T extends { id: string }>(items: T[], draggedId: string, targetId: string): T[] {
+  if (draggedId === targetId) return items;
+  const next = [...items];
+  const from = next.findIndex((item) => item.id === draggedId);
+  const to = next.findIndex((item) => item.id === targetId);
+  if (from < 0 || to < 0) return items;
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
 
 function RowImageAdder({ onAdd }: { onAdd: (image: Omit<Image, "id" | "order">) => Promise<void> }) {
   const [url, setUrl] = useState("");
@@ -28,6 +62,7 @@ function RowImageAdder({ onAdd }: { onAdd: (image: Omit<Image, "id" | "order">) 
       <AdminImageField
         value={url}
         onChange={setUrl}
+        onAlt={setAlt}
         onSize={(nextWidth, nextHeight) => {
           setWidth(nextWidth || 1440);
           setHeight(nextHeight || 960);
@@ -35,7 +70,7 @@ function RowImageAdder({ onAdd }: { onAdd: (image: Omit<Image, "id" | "order">) 
         placeholder="粘贴图片 URL"
       />
       <div className="admin-form-row">
-        <input value={alt} onChange={(event) => setAlt(event.target.value)} className="admin-input" placeholder="描述" />
+        <input value={alt} onChange={(event) => setAlt(event.target.value)} className="admin-input" placeholder="描述 / alt" />
         <button type="button" onClick={handleAdd} disabled={!url || saving} className="admin-btn-sm">
           {saving ? "添加中..." : "添加图片"}
         </button>
@@ -48,30 +83,65 @@ export default function EditProjectPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
+  const [features, setFeatures] = useState<FeatureItem[]>([]);
   const [newRowLayout, setNewRowLayout] = useState<LayoutType>("landscape");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [showDimensions, setShowDimensions] = useState(false);
+  const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
+  const [draggedImage, setDraggedImage] = useState<{ rowId: string; imageId: string } | null>(null);
 
   useEffect(() => {
     fetch(`/api/projects?slug=${params.slug}`)
       .then((res) => res.json())
-      .then((data) => setProject(data));
+      .then((data) => {
+        if (data?.id) setProject(data);
+        else setMessage(data?.error || "作品不存在");
+      });
+    fetch("/api/features").then((res) => res.json()).then((data) => {
+      if (Array.isArray(data)) setFeatures(data);
+    });
   }, [params.slug]);
+
+  const isFeatured = useMemo(
+    () => Boolean(project && features.some((feature) => feature.type === "project" && feature.projectSlug === project.slug)),
+    [features, project],
+  );
 
   if (!project) return <p>加载中...</p>;
 
   const showMessage = (nextMessage: string) => {
     setMessage(nextMessage);
-    window.setTimeout(() => setMessage(""), 2200);
+    window.setTimeout(() => setMessage(""), 2400);
   };
 
   const setProjectFromServer = (updated: Project) => {
-    setProject((current) => (current ? { ...current, rows: updated.rows } : updated));
+    setProject(updated);
+  };
+
+  const updateRowLayoutInState = (rowId: string, layout: LayoutType) => {
+    setProject((current) => (
+      current
+        ? {
+            ...current,
+            rows: current.rows.map((row) => (row.id === rowId ? { ...row, layout } : row)),
+          }
+        : current
+    ));
+  };
+
+  const updateField = (field: keyof Project, value: string | number | boolean) => {
+    setProject((current) => (current ? { ...current, [field]: value } : current));
   };
 
   const handleSave = async (event?: React.FormEvent) => {
     event?.preventDefault();
+    const errors = validateProject(project);
+    if (errors.length) {
+      showMessage(errors[0]);
+      return;
+    }
+
     setSaving(true);
     const res = await fetch(`/api/projects?id=${project.id}`, {
       method: "PUT",
@@ -81,7 +151,8 @@ export default function EditProjectPage() {
     setSaving(false);
 
     if (!res.ok) {
-      showMessage("保存失败");
+      const error = await res.json().catch(() => ({ error: "保存失败" }));
+      showMessage(error.error || "保存失败");
       return;
     }
 
@@ -92,7 +163,7 @@ export default function EditProjectPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("确定删除此作品？此操作不可撤销。")) return;
+    if (!confirm("确定删除此作品？此操作不可撤销，关联首页精选也会被移除。")) return;
     const res = await fetch(`/api/projects?id=${project.id}`, { method: "DELETE" });
     if (res.ok) router.push("/admin/projects");
   };
@@ -103,7 +174,12 @@ export default function EditProjectPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId: project.id, action: "addRow", layout: newRowLayout }),
     });
-    if (res.ok) setProjectFromServer(await res.json());
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: "请先提供在线数据库链接 DATABASE_URL。" }));
+      showMessage(error.error || "添加行失败");
+      return;
+    }
+    setProjectFromServer(await res.json());
   };
 
   const handleDeleteRow = async (rowId: string) => {
@@ -117,12 +193,24 @@ export default function EditProjectPage() {
   };
 
   const handleUpdateRowLayout = async (rowId: string, layout: LayoutType) => {
+    const previousLayout = project.rows.find((row) => row.id === rowId)?.layout;
+    updateRowLayoutInState(rowId, layout);
+
     const res = await fetch("/api/projects", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId: project.id, action: "updateRow", rowId, data: { layout } }),
     });
-    if (res.ok) setProjectFromServer(await res.json());
+
+    if (!res.ok) {
+      if (previousLayout) updateRowLayoutInState(rowId, previousLayout);
+      const error = await res.json().catch(() => ({ error: "行形式保存失败" }));
+      showMessage(error.error || "行形式保存失败");
+      return;
+    }
+
+    setProjectFromServer(await res.json());
+    showMessage("行形式已保存");
   };
 
   const handleAddImage = async (rowId: string, image: Omit<Image, "id" | "order">) => {
@@ -131,7 +219,12 @@ export default function EditProjectPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId: project.id, action: "addImage", rowId, image }),
     });
-    if (res.ok) setProjectFromServer(await res.json());
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: "添加失败" }));
+      showMessage(error.error || "添加失败");
+      return;
+    }
+    setProjectFromServer(await res.json());
   };
 
   const handleUpdateImage = async (rowId: string, imageId: string, data: Partial<Image>) => {
@@ -153,20 +246,70 @@ export default function EditProjectPage() {
     if (res.ok) setProjectFromServer(await res.json());
   };
 
-  const updateField = (field: string, value: string | number | boolean) => {
-    setProject((current) => (current ? { ...current, [field]: value } : current));
+  const moveRowBefore = (targetRowId: string) => {
+    if (!draggedRowId) return;
+    setProject((current) => {
+      if (!current) return current;
+      return { ...current, rows: moveById(current.rows, draggedRowId, targetRowId) };
+    });
+  };
+
+  const persistRowOrder = async () => {
+    setDraggedRowId(null);
+    const rowIds = project.rows.map((row) => row.id);
+    const res = await fetch("/api/projects", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: project.id, action: "reorderRows", rowIds }),
+    });
+    if (res.ok) setProjectFromServer(await res.json());
+  };
+
+  const moveImageBefore = (rowId: string, targetImageId: string) => {
+    if (!draggedImage || draggedImage.rowId !== rowId) return;
+    setProject((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        rows: current.rows.map((row) => (
+          row.id === rowId ? { ...row, images: moveById(row.images, draggedImage.imageId, targetImageId) } : row
+        )),
+      };
+    });
+  };
+
+  const persistImageOrder = async (rowId: string) => {
+    setDraggedImage(null);
+    const row = project.rows.find((item) => item.id === rowId);
+    if (!row) return;
+    const imageIds = row.images.map((image) => image.id);
+    const res = await fetch("/api/projects", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: project.id, action: "reorderImages", rowId, imageIds }),
+    });
+    if (res.ok) setProjectFromServer(await res.json());
   };
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1 className="admin-heading" style={{ margin: 0 }}>编辑作品</h1>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div className="admin-page-header">
+        <div>
+          <h1 className="admin-heading" style={{ margin: 0 }}>编辑作品</h1>
+          <div style={{ marginTop: 8 }}>
+            <span className={`admin-status-badge ${project.visible ? "is-live" : "is-draft"}`}>
+              {project.visible ? "已发布" : "草稿"}
+            </span>
+            {isFeatured && <span className="admin-status-badge is-featured">首页精选中</span>}
+          </div>
+        </div>
+        <div className="admin-actions">
+          {project.visible && <Link href={`/works/${project.slug}`} className="admin-btn-sm">预览</Link>}
           <button onClick={() => handleSave()} disabled={saving} className="admin-btn">
             {saving ? "保存中..." : "保存"}
           </button>
           <button onClick={handleDelete} className="admin-btn-sm admin-btn-danger">删除作品</button>
-          {message && <span style={{ padding: "6px 12px", background: message.includes("失败") ? "#fed7d7" : "#c6f6d5", borderRadius: 4, fontSize: 13 }}>{message}</span>}
+          {message && <span className={`admin-message${message.includes("失败") || message.includes("请") || message.includes("slug") ? " is-error" : ""}`}>{message}</span>}
         </div>
       </div>
 
@@ -174,12 +317,12 @@ export default function EditProjectPage() {
         <h2 className="admin-subheading">基本信息</h2>
         <div className="admin-form-row">
           <div className="admin-form-group">
-            <label>标识 (slug)</label>
+            <label>标识 slug</label>
             <input value={project.slug} onChange={(event) => updateField("slug", event.target.value)} required placeholder="my-project-slug" className="admin-input" />
           </div>
           <div className="admin-form-group">
             <label>标题</label>
-            <input value={project.titleZh} onChange={(event) => { updateField("titleZh", event.target.value); if (!project.slug) updateField("slug", "work-" + Date.now().toString(36)); }} required placeholder="我的作品" className="admin-input" />
+            <input value={project.titleZh} onChange={(event) => updateField("titleZh", event.target.value)} required placeholder="我的作品" className="admin-input" />
           </div>
         </div>
         <div className="admin-form-row">
@@ -210,16 +353,23 @@ export default function EditProjectPage() {
           <div className="admin-form-group" style={{ alignSelf: "flex-end" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input type="checkbox" checked={project.visible} onChange={(event) => updateField("visible", event.target.checked)} style={{ width: "auto" }} />
-              发布可见
+              公开发布
             </label>
           </div>
         </div>
 
-        <h2 className="admin-subheading">封面图片</h2>
-        <div className="admin-form-row">
+        <h2 className="admin-subheading">展示图片</h2>
+        <div className="admin-form-row admin-image-form-row">
           <div className="admin-form-group">
             <AdminImageField
-              label="封面图"
+              label="首页精选图"
+              value={project.featureUrl || project.coverUrl}
+              onChange={(value) => updateField("featureUrl", value)}
+            />
+          </div>
+          <div className="admin-form-group">
+            <AdminImageField
+              label="详情首屏大图"
               value={project.coverUrl}
               onChange={(value) => updateField("coverUrl", value)}
               onSize={(width, height) => {
@@ -230,7 +380,7 @@ export default function EditProjectPage() {
           </div>
           <div className="admin-form-group">
             <AdminImageField
-              label="缩略图"
+              label="Works 缩略图"
               value={project.thumbUrl}
               onChange={(value) => updateField("thumbUrl", value)}
               onSize={(width, height) => {
@@ -277,10 +427,31 @@ export default function EditProjectPage() {
           <button type="button" onClick={handleAddRow} className="admin-btn-sm">添加行</button>
         </div>
 
-        {project.rows.map((row) => (
-          <div key={row.id} className="admin-project-row">
+        {project.rows.map((row, rowIndex) => (
+          <div
+            key={row.id}
+            className={`admin-project-row${draggedRowId === row.id ? " admin-dragging" : ""}`}
+            onDragOver={(event) => {
+              if (!draggedRowId || draggedRowId === row.id) return;
+              event.preventDefault();
+              moveRowBefore(row.id);
+            }}
+          >
             <div className="admin-project-row-head">
               <div className="admin-row-layout-control">
+                <span
+                  className="admin-drag-handle"
+                  draggable
+                  title="拖动排序"
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    setDraggedRowId(row.id);
+                  }}
+                  onDragEnd={() => void persistRowOrder()}
+                >
+                  ::
+                </span>
+                <span className="admin-muted">行 #{rowIndex}</span>
                 <select
                   value={row.layout}
                   onChange={(event) => handleUpdateRowLayout(row.id, event.target.value as LayoutType)}
@@ -301,15 +472,40 @@ export default function EditProjectPage() {
 
             <div className="admin-image-grid">
               {row.images.map((image) => (
-                <div key={image.id} className="admin-image-card">
-                  <img className="loaded"  src={image.url} alt={image.alt || ""} />
+                <div
+                  key={image.id}
+                  className={`admin-image-card${draggedImage?.imageId === image.id ? " admin-dragging" : ""}`}
+                  onDragOver={(event) => {
+                    if (!draggedImage || draggedImage.rowId !== row.id || draggedImage.imageId === image.id) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    moveImageBefore(row.id, image.id);
+                  }}
+                >
+                  <span
+                    className="admin-drag-handle"
+                    draggable
+                    title="拖动排序"
+                    onDragStart={(event) => {
+                      event.stopPropagation();
+                      event.dataTransfer.effectAllowed = "move";
+                      setDraggedImage({ rowId: row.id, imageId: image.id });
+                    }}
+                    onDragEnd={(event) => {
+                      event.stopPropagation();
+                      void persistImageOrder(row.id);
+                    }}
+                  >
+                    ::
+                  </span>
+                  <img className="loaded" src={image.url} alt={image.alt || ""} draggable={false} />
                   <input
                     defaultValue={image.alt || ""}
                     onBlur={(event) => handleUpdateImage(row.id, image.id, { alt: event.target.value || null })}
                     className="admin-input"
-                    placeholder="描述"
+                    placeholder="描述 / alt"
                   />
-                  <div className="admin-image-meta">{image.width} × {image.height}</div>
+                  <div className="admin-image-meta">{image.width} x {image.height}</div>
                   <button type="button" onClick={() => handleDeleteImage(row.id, image.id)} className="admin-image-delete">×</button>
                 </div>
               ))}
@@ -317,7 +513,7 @@ export default function EditProjectPage() {
           </div>
         ))}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 24, paddingBottom: 40 }}>
+        <div className="admin-actions admin-form-actions">
           <button type="submit" disabled={saving} className="admin-btn">
             {saving ? "保存中..." : "保存"}
           </button>

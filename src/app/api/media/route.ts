@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addFeature, deleteFeature, getFeatures, getProjectBySlug, reorderFeatures, updateFeature } from "@/lib/db";
+import { addMediaItem, deleteMediaItem, getMediaItems, updateMediaItem } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 
 function isHttpUrl(value: unknown) {
@@ -12,19 +12,11 @@ function isHttpUrl(value: unknown) {
   }
 }
 
-async function validateFeatureInput(data: Record<string, unknown>) {
-  const type = data.type === "image" ? "image" : "project";
+function validateMediaInput(data: Record<string, unknown>) {
   const errors: string[] = [];
-
-  if (type === "project") {
-    const slug = String(data.projectSlug || "").trim();
-    if (!slug) errors.push("请选择关联项目。");
-    if (slug && !(await getProjectBySlug(slug))) errors.push("关联项目不存在。");
-  } else {
-    if (!isHttpUrl(data.imageUrl)) errors.push("请填写有效的图片 URL。");
-    if (!String(data.imageTitle || "").trim()) errors.push("请填写显示标题。");
-  }
-
+  if (!isHttpUrl(data.url)) errors.push("请填写有效的图片 URL。");
+  if (Number(data.width) <= 0) errors.push("图片宽度必须大于 0。");
+  if (Number(data.height) <= 0) errors.push("图片高度必须大于 0。");
   return errors;
 }
 
@@ -32,7 +24,7 @@ export async function GET() {
   const unauthorized = await requireAdmin();
   if (unauthorized) return unauthorized;
 
-  return NextResponse.json(await getFeatures());
+  return NextResponse.json(await getMediaItems());
 }
 
 export async function POST(request: NextRequest) {
@@ -40,27 +32,17 @@ export async function POST(request: NextRequest) {
   if (unauthorized) return unauthorized;
 
   const data = await request.json();
-
-  if (data.action === "reorder") {
-    if (!Array.isArray(data.ids)) {
-      return NextResponse.json({ error: "ids array required" }, { status: 400 });
-    }
-    return NextResponse.json(await reorderFeatures(data.ids));
-  }
-
-  const errors = await validateFeatureInput(data);
+  const errors = validateMediaInput(data);
   if (errors.length) return NextResponse.json({ error: errors[0], errors }, { status: 400 });
 
-  const feature = await addFeature({
-    type: data.type || "project",
-    projectSlug: data.projectSlug || undefined,
-    projectTitle: data.projectTitle || undefined,
-    projectCoverUrl: data.projectCoverUrl || undefined,
-    imageUrl: data.imageUrl || undefined,
-    imageTitle: data.imageTitle || undefined,
-    order: data.order ?? 0,
+  const item = await addMediaItem({
+    url: String(data.url).trim(),
+    title: String(data.title || "").trim(),
+    alt: String(data.alt || "").trim() || null,
+    width: Number(data.width) || 1440,
+    height: Number(data.height) || 960,
   });
-  return NextResponse.json(feature, { status: 201 });
+  return NextResponse.json(item, { status: 201 });
 }
 
 export async function PUT(request: NextRequest) {
@@ -71,11 +53,19 @@ export async function PUT(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id") || data.id;
   if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
-  const errors = await validateFeatureInput(data);
+
+  const errors = validateMediaInput(data);
   if (errors.length) return NextResponse.json({ error: errors[0], errors }, { status: 400 });
-  const updated = await updateFeature(id, data);
-  if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(updated);
+
+  const item = await updateMediaItem(id, {
+    url: String(data.url).trim(),
+    title: String(data.title || "").trim(),
+    alt: String(data.alt || "").trim() || null,
+    width: Number(data.width) || 1440,
+    height: Number(data.height) || 960,
+  });
+  if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(item);
 }
 
 export async function DELETE(request: NextRequest) {
@@ -85,7 +75,8 @@ export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
-  const result = await deleteFeature(id);
+
+  const result = await deleteMediaItem(id);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ success: true });
 }
