@@ -42,3 +42,11 @@ next-env.d.ts
 
 # env example
 !.env.example
+
+# local assistant/tooling notes
+AGENTS.md
+CLAUDE.md
+.claude/
+.codex/
+.cursor/
+.windsurf/
