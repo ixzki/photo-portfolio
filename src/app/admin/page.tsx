@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AdminPreviewImage from "@/components/AdminPreviewImage";
 import { getAllProjects, getFeatures, getMediaItems } from "@/lib/db";
 
 export default async function AdminDashboard() {
@@ -49,7 +50,15 @@ export default async function AdminDashboard() {
           {projects.map((project) => (
             <tr key={project.id}>
               <td>{project.order}</td>
-              <td><img className="loaded admin-table-thumb" src={project.thumbUrl} alt={project.titleZh} /></td>
+              <td>
+                <AdminPreviewImage
+                  className="loaded admin-table-thumb"
+                  src={project.thumbUrl}
+                  alt={project.titleZh}
+                  width={60}
+                  height={40}
+                />
+              </td>
               <td>{project.titleZh}</td>
               <td>{project.design}</td>
               <td>

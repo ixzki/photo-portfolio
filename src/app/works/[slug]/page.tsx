@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import DetailNextAction from "@/components/DetailNextAction";
+import DetailImageFrame from "@/components/DetailImageFrame";
+import DetailMotionTrigger from "@/components/DetailMotionTrigger";
+import DetailProjectTitle from "@/components/DetailProjectTitle";
 import ImageLoader from "@/components/ImageLoader";
 import { getProjects, getVisibleProjectBySlug } from "@/lib/db";
 import { Project, Row } from "@/lib/types";
@@ -73,6 +76,7 @@ export default async function DetailPage({ params }: DetailPageProps) {
 
   return (
     <section className="view detail-page is-active" id="detail" data-view="detail" aria-label="项目详情">
+      <DetailMotionTrigger />
       <div className="cover">
         <ImageLoader
           src={project.coverUrl}
@@ -84,9 +88,7 @@ export default async function DetailPage({ params }: DetailPageProps) {
           sizes="100vw"
         />
 
-        <div className="project-title-container">
-          <h1 className="project-title hover-invert is-active">{project.titleZh}</h1>
-        </div>
+        <DetailProjectTitle title={project.titleZh} />
       </div>
 
       <div className="detail-content">
@@ -95,19 +97,15 @@ export default async function DetailPage({ params }: DetailPageProps) {
         </aside>
 
         <div className="album-container">
-          {project.rows.map((row: Row) => (
+          {project.rows.map((row: Row, rowIndex) => (
             <div key={row.id} className={`detail-row ${row.layout}`}>
-              {row.images.map((image) => (
-                <figure key={image.id} className="detail-image-frame" style={{ aspectRatio: `${image.width} / ${image.height}` }}>
-                  <ImageLoader
-                    src={image.url}
-                    alt={image.alt || project.titleZh}
-                    className="detail-image"
-                    width={image.width}
-                    height={image.height}
-                    sizes="(orientation: portrait) 100vw, 70vw"
-                  />
-                </figure>
+              {row.images.map((image, imageIndex) => (
+                <DetailImageFrame
+                  key={image.id}
+                  image={image}
+                  alt={project.titleZh}
+                  delayIndex={rowIndex + imageIndex}
+                />
               ))}
             </div>
           ))}

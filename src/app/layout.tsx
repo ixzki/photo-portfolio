@@ -1,8 +1,23 @@
 import type { Metadata } from "next";
+import { Jost, Noto_Sans_SC } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getSettings } from "@/lib/db";
 import "./globals.css";
+
+const jost = Jost({
+  subsets: ["latin"],
+  weight: ["300", "400", "700"],
+  variable: "--font-jost",
+  display: "swap",
+});
+
+const notoSansSc = Noto_Sans_SC({
+  weight: ["300", "400", "500", "700"],
+  variable: "--font-noto-sans-sc",
+  display: "swap",
+  preload: false,
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
@@ -56,11 +71,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, viewport-fit=cover" />
         <meta name="theme-color" content="#ffffff" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;700&amp;family=Noto+Sans+SC:wght@300;400;500;700&amp;display=swap" rel="stylesheet" />
       </head>
-      <body>
+      <body className={`${jost.variable} ${notoSansSc.variable}`}>
         <Navbar siteName={siteName} />
         <main>{children}</main>
         <Footer copyright={copyright} icp={icp} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AdminPreviewImage from "@/components/AdminPreviewImage";
 import type { MediaItem } from "@/lib/types";
 
 interface AdminImageFieldProps {
@@ -117,7 +118,7 @@ export default function AdminImageField({
       {message && <p className={`admin-field-message${message.includes("失败") ? " is-error" : ""}`}>{message}</p>}
       {value && (
         <div className="admin-image-preview">
-          <img className="loaded" src={value} alt="" />
+          <AdminPreviewImage src={value} alt="" width={160} height={106} sizes="160px" />
           {detectedSize.width > 0 && (
             <span className="admin-image-size">{detectedSize.width} x {detectedSize.height}</span>
           )}
@@ -133,7 +134,7 @@ export default function AdminImageField({
             <div className="admin-media-picker-grid">
               {media.map((item) => (
                 <button type="button" key={item.id} className="admin-media-picker-item" onClick={() => selectMedia(item)}>
-                  <img className="loaded" src={item.url} alt={item.alt || item.title || ""} />
+                  <AdminPreviewImage src={item.url} alt={item.alt || item.title || ""} width={220} height={165} sizes="220px" />
                   <span>{item.title || item.alt || "未命名图片"}</span>
                 </button>
               ))}

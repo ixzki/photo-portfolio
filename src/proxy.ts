@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Don't redirect setup page or static assets
+  // Don't redirect setup page or static assets.
   if (pathname.startsWith("/setup") || pathname.startsWith("/_next") || pathname.includes(".")) {
     return NextResponse.next();
   }
 
-  // If no DATABASE_URL, redirect to setup (skip in dev — seed data fallback)
+  // If no DATABASE_URL, redirect to setup (skip in dev because seed data can be used).
   if (
     process.env.NODE_ENV !== "development" &&
     !process.env.DATABASE_URL &&

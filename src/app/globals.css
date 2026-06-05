@@ -3,11 +3,14 @@
 
 /* ---- Transparent Navbar (detail page over cover) ---- */
 .navbar-transparent {
-  background: transparent !important;
+  background-color: transparent !important;
+}
+.navbar-transparent .menu {
+  background-color: transparent;
 }
 .navbar-transparent .logo,
 .navbar-transparent .menu-item {
-  background: transparent;
+  background-color: transparent;
   color: var(--fore-color);
 }
 .navbar-transparent .menu-divider {
@@ -15,7 +18,7 @@
 }
 .navbar-transparent .logo.is-active,
 .navbar-transparent .menu-item.is-active {
-  background: transparent;
+  background-color: transparent;
   color: var(--fore-color);
 }
 /* ============================================================
@@ -30,6 +33,7 @@
   --back-color: #ffffff;
   --fore-color: #000000;
   --image-loading-bg: #f0f0f0;
+  --image-shimmer-peak-opacity: 0.42;
   --nav-h: calc(40px + 0.5vw);
   --footer-h: 40px;
   --font-size: calc(13px + 0.6vw);
@@ -58,7 +62,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   font-optical-sizing: auto;
-  font-family: "Jost", "Source Han Sans SC", "Noto Sans SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: var(--font-jost), var(--font-noto-sans-sc), "Source Han Sans SC", "Noto Sans SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-style: normal;
   cursor: default;
   user-select: none;
@@ -109,8 +113,9 @@ img.image-error {
   align-items: center;
   justify-content: space-between;
   overflow: hidden;
-  background: var(--back-color);
+  background-color: var(--back-color);
   color: var(--fore-color);
+  transition: background-color 0.18s ease;
 }
 
 .logo,
@@ -122,7 +127,7 @@ img.image-error {
   padding: 0.15em 0;
   color: var(--fore-color);
   font-size: var(--font-size);
-  font-weight: 500;
+  font-weight: 700;
   transition: color 0.28s ease, background-color 0.28s ease;
 }
 
@@ -1481,7 +1486,8 @@ main {
     height: var(--nav-h);
     margin-left: 0;
     padding-right: 8px;
-    background: var(--back-color);
+    background-color: var(--back-color);
+    transition: background-color 0.18s ease;
   }
 
   .menu-item {
@@ -1607,6 +1613,38 @@ body:has(.detail-page.is-active) .footer {
   justify-content: center;
   overflow: hidden;
   background: var(--image-loading-bg);
+  opacity: 0;
+  transform: translate3d(0, -34px, 0);
+  transition:
+    opacity 0.85s ease,
+    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+}
+
+.detail-page .cover::before,
+.detail-page .detail-image-frame::before {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  content: "";
+  pointer-events: none;
+  background:
+    linear-gradient(
+      110deg,
+      transparent 24%,
+      rgb(255 255 255 / var(--image-shimmer-peak-opacity)),
+      transparent 72%
+    ),
+    var(--image-loading-bg);
+  opacity: 1;
+  transform: translate3d(-120%, 0, 0);
+  animation: detail-image-shimmer 1.15s ease-in-out infinite;
+  transition: opacity 0.35s ease;
+}
+
+.detail-page .cover:has(.cover-image.loaded)::before,
+.detail-page .detail-image-frame:has(.detail-image.loaded)::before {
+  opacity: 0;
 }
 
 .detail-page .cover-image {
@@ -1617,12 +1655,29 @@ body:has(.detail-page.is-active) .footer {
 }
 
 .detail-page .project-title-container {
-  position: fixed;
+  position: absolute;
   top: auto;
   right: var(--edge-gap);
   bottom: var(--edge-gap);
   left: auto;
   z-index: 20;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 0.42s ease,
+    transform 0.62s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+}
+
+.detail-page .project-title-container.is-hidden {
+  opacity: 0;
+  transform: translate3d(18px, 0, 0);
+  pointer-events: none;
+}
+
+.detail-page .project-title-container.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
 }
 
 .detail-page .project-title {
@@ -1675,6 +1730,12 @@ body:has(.detail-page.is-active) .footer {
   width: min(280px, 25vw);
   margin-left: auto;
   padding: 0 var(--edge-gap) 0 0;
+  opacity: 0;
+  transform: translate3d(24px, 0, 0);
+  transition:
+    opacity 0.68s linear,
+    transform 0.78s cubic-bezier(0.33, 1, 0.68, 1);
+  will-change: transform, opacity;
 }
 
 .detail-page .project-info {
@@ -1705,6 +1766,13 @@ body:has(.detail-page.is-active) .footer {
   padding: 0 var(--edge-gap);
 }
 
+.detail-page .cover.is-motion-ready,
+.detail-page .project-info-sidebar.is-motion-ready,
+.detail-page .project-footer-container.is-motion-ready {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
 .detail-page .detail-row {
   display: block;
   width: 100%;
@@ -1712,11 +1780,28 @@ body:has(.detail-page.is-active) .footer {
 }
 
 .detail-page .detail-image-frame {
+  position: relative;
   display: block;
   width: 100%;
   margin: 0;
   overflow: hidden;
   background: var(--image-loading-bg);
+}
+
+.detail-page .detail-image-motion {
+  backface-visibility: hidden;
+  opacity: 0;
+  transform: translate3d(-20px, 0, 0);
+  transition:
+    opacity 0.58s linear,
+    transform 0.72s cubic-bezier(0.33, 1, 0.68, 1);
+  transition-delay: var(--detail-reveal-delay, 0ms);
+  will-change: transform, opacity;
+}
+
+.detail-page .detail-image-motion.is-in-view {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
 }
 
 .detail-page .detail-row.landscape .detail-image-frame + .detail-image-frame {
@@ -1777,10 +1862,19 @@ body:has(.detail-page.is-active) .footer {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition:
+    opacity 0.5s ease,
+    filter 0.5s ease,
+    transform 0.5s ease;
 }
 
 .detail-page .project-footer-container {
   display: none;
+  opacity: 0;
+  transform: translate3d(0, 26px, 0);
+  transition:
+    opacity 0.84s ease 0.2s,
+    transform 0.84s cubic-bezier(0.22, 1, 0.36, 1) 0.2s;
 }
 
 .detail-page .detail-next-action {
@@ -1803,14 +1897,25 @@ body:has(.detail-page.is-active) .footer {
   line-height: 1;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease, background-color 0.28s ease, color 0.28s ease;
+  transform: translate3d(0, 28px, 0);
+  transition:
+    opacity 0.45s ease,
+    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.28s ease,
+    color 0.28s ease;
 }
 
 .detail-page .detail-next-action.is-visible {
   opacity: 1;
   pointer-events: auto;
+  transform: translate3d(0, 0, 0);
 }
 
+@keyframes detail-image-shimmer {
+  to {
+    transform: translate3d(120%, 0, 0);
+  }
+}
 
 @media (orientation: landscape) {
   .works-grid {
@@ -1819,10 +1924,6 @@ body:has(.detail-page.is-active) .footer {
 }
 
 @media (orientation: portrait) {
-  body:has(.detail-page.is-active) main {
-    padding-top: var(--nav-h);
-  }
-
   .detail-page .cover {
     position: relative;
     height: auto;
@@ -1884,6 +1985,10 @@ body:has(.detail-page.is-active) .footer {
     height: auto;
   }
 
+  .detail-page .detail-image-motion {
+    transform: translate3d(0, 20px, 0);
+  }
+
   .detail-page .project-footer-container {
     order: 2;
     display: block;
@@ -1907,6 +2012,36 @@ body:has(.detail-page.is-active) .footer {
     background: transparent !important;
     color: var(--fore-color) !important;
     font-weight: 500 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-page .cover,
+  .detail-page .project-title-container,
+  .detail-page .detail-content,
+  .detail-page .project-info-sidebar,
+  .detail-page .project-footer-container,
+  .detail-page .detail-image-motion,
+  .detail-page .detail-next-action,
+  .detail-page .detail-image {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .detail-page .cover,
+  .detail-page .project-title-container,
+  .detail-page .detail-content,
+  .detail-page .project-info-sidebar,
+  .detail-page .project-footer-container,
+  .detail-page .detail-image-motion,
+  .detail-page .detail-next-action.is-visible {
+    opacity: 1;
+  }
+
+  .detail-page .cover::before,
+  .detail-page .detail-image-frame::before {
+    animation: none !important;
   }
 }
 
@@ -1939,6 +2074,11 @@ body:has(.detail-page.is-active) .footer {
   font-weight: 400 !important;
 }
 
+.navbar .logo.hover-invert,
+.navbar .menu-item.hover-invert {
+  font-weight: 700 !important;
+}
+
 .features-title.hover-invert {
   transition: opacity 0.5s ease, transform 0.5s ease, background-color 0.28s ease, color 0.28s ease;
 }
@@ -1956,4 +2096,3 @@ body:has(.detail-page.is-active) .footer {
   color: var(--back-color);
   font-weight: 700 !important;
 }
-

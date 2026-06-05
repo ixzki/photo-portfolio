@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import AdminPreviewImage from "@/components/AdminPreviewImage";
 import type { FeatureItem, Project } from "@/lib/types";
 
 export default function AdminProjectsTable({
@@ -96,7 +97,15 @@ export default function AdminProjectsTable({
                 </span>{" "}
                 {index}
               </td>
-              <td><img className="loaded admin-table-thumb" src={project.thumbUrl} alt={project.titleZh} /></td>
+              <td>
+                <AdminPreviewImage
+                  className="loaded admin-table-thumb"
+                  src={project.thumbUrl}
+                  alt={project.titleZh}
+                  width={60}
+                  height={40}
+                />
+              </td>
               <td><strong>{project.titleZh}</strong></td>
               <td>{project.design}</td>
               <td>{project.city}</td>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 
 interface ImageLoaderProps {
   src: string;
@@ -32,18 +33,6 @@ function thumbUrl(src: string): string {
   return resizedUrl(src, 24, 10);
 }
 
-function responsiveSrcSet(src: string): string | undefined {
-  const widths = [480, 768, 1080, 1440, 1920, 2560, 3200];
-  const urls = widths
-    .map((width) => {
-      const url = resizedUrl(src, width, 82);
-      return url ? `${url} ${width}w` : "";
-    })
-    .filter(Boolean);
-
-  return urls.length ? urls.join(", ") : undefined;
-}
-
 export default function ImageLoader({
   src,
   alt,
@@ -56,9 +45,10 @@ export default function ImageLoader({
 }: ImageLoaderProps) {
   const [loadedSrc, setLoadedSrc] = useState(priority ? src : "");
   const [errorSrc, setErrorSrc] = useState("");
-  const imgRef = useRef<HTMLImageElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
   const thumb = thumbUrl(src);
-  const srcSet = responsiveSrcSet(src);
+  const imageWidth = width || 1440;
+  const imageHeight = height || 960;
 
   useEffect(() => {
     if (priority) return;
@@ -86,25 +76,28 @@ export default function ImageLoader({
   const loaded = priority || loadedSrc === src;
   const errored = errorSrc === src;
   const finalClass = `${className}${loaded ? " loaded" : ""}${errored ? " image-error" : ""}`;
+  const imageStyle = {
+    ...style,
+    ...(thumb ? { "--thumb": `url(${thumb})` } : {}),
+  } as React.CSSProperties;
 
-  return (
-    <img
-      ref={imgRef}
-      src={src}
-      srcSet={srcSet}
-      sizes={srcSet ? sizes || "100vw" : undefined}
-      alt={alt}
-      className={finalClass}
-      width={width}
-      height={height}
-      loading={priority ? "eager" : "lazy"}
-      fetchPriority={priority ? "high" : "auto"}
-      decoding="async"
-      style={{
-        ...style,
-        ...(thumb ? { "--thumb": `url(${thumb})` } : {}),
-      } as React.CSSProperties}
-      draggable={false}
-    />
-  );
+  const commonProps = {
+    ref: imgRef,
+    src,
+    className: finalClass,
+    sizes: sizes || "100vw",
+    priority,
+    unoptimized: true,
+    loading: priority ? "eager" as const : "lazy" as const,
+    fetchPriority: priority ? "high" as const : "auto" as const,
+    onLoad: () => setLoadedSrc(src),
+    onError: () => {
+      setErrorSrc(src);
+      setLoadedSrc(src);
+    },
+    style: imageStyle,
+    draggable: false,
+  };
+
+  return <Image {...commonProps} width={imageWidth} height={imageHeight} alt={alt} />;
 }

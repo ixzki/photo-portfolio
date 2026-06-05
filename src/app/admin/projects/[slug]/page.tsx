@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import AdminImageField from "@/components/AdminImageField";
+import AdminPreviewImage from "@/components/AdminPreviewImage";
 import { LAYOUT_OPTIONS, FeatureItem, Image, LayoutType, Project } from "@/lib/types";
 
 function isHttpUrl(value: string) {
@@ -498,7 +499,7 @@ export default function EditProjectPage() {
                   >
                     ::
                   </span>
-                  <img className="loaded" src={image.url} alt={image.alt || ""} draggable={false} />
+                  <AdminPreviewImage src={image.url} alt={image.alt || ""} width={320} height={240} sizes="320px" />
                   <input
                     defaultValue={image.alt || ""}
                     onBlur={(event) => handleUpdateImage(row.id, image.id, { alt: event.target.value || null })}

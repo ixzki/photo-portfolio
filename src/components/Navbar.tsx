@@ -16,7 +16,9 @@ export default function Navbar({ siteName }: { siteName: string }) {
 
     const handleScroll = () => {
       const content = document.querySelector<HTMLElement>(".detail-content");
-      const shouldShowBar = Boolean(content && content.getBoundingClientRect().top <= 0);
+      const navHeight = document.querySelector<HTMLElement>(".navbar")?.getBoundingClientRect().height ?? 0;
+      const revealOffset = navHeight * 2;
+      const shouldShowBar = Boolean(content && content.getBoundingClientRect().top <= revealOffset);
       setScrolled((current) => (current === shouldShowBar ? current : shouldShowBar));
     };
 

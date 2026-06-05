@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AdminImageField from "@/components/AdminImageField";
+import AdminPreviewImage from "@/components/AdminPreviewImage";
 import type { FeatureItem } from "@/lib/types";
 
 interface ProjectOption {
@@ -182,7 +183,7 @@ export default function AdminFeaturesPage() {
                 </div>
                 {newFeature.projectSlug && (
                   <div className="admin-feature-preview">
-                    <img className="loaded" src={newFeature.projectCoverUrl} alt="" />
+                    <AdminPreviewImage src={newFeature.projectCoverUrl} alt="" width={220} height={165} sizes="220px" />
                     <div>
                       <p>{newFeature.projectTitle}</p>
                       <span className={`admin-status-badge ${projectBySlug.get(newFeature.projectSlug)?.visible ? "is-live" : "is-draft"}`}>
@@ -243,7 +244,13 @@ export default function AdminFeaturesPage() {
                 ::
               </span>
               <span className="admin-muted">#{index}</span>
-              <img className="loaded" src={item.type === "project" ? item.projectCoverUrl : item.imageUrl} alt="" />
+              <AdminPreviewImage
+                src={item.type === "project" ? item.projectCoverUrl || "" : item.imageUrl || ""}
+                alt=""
+                width={220}
+                height={165}
+                sizes="220px"
+              />
               <div className="admin-feature-card-body">
                 <strong>{item.type === "project" ? item.projectTitle : item.imageTitle}</strong>
                 <div>

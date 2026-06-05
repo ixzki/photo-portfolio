@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AdminPreviewImage from "@/components/AdminPreviewImage";
 import type { MediaItem } from "@/lib/types";
 
 const emptyDraft = {
@@ -135,7 +136,7 @@ export default function AdminMediaPage() {
       <div className="admin-media-grid">
         {items.map((item) => (
           <div key={item.id} className="admin-media-card">
-            <img className="loaded" src={item.url} alt={item.alt || item.title} />
+            <AdminPreviewImage src={item.url} alt={item.alt || item.title} width={320} height={240} sizes="(max-width: 700px) 100vw, 320px" />
             <input
               className="admin-input"
               defaultValue={item.title}
