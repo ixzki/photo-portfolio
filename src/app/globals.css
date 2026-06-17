@@ -1773,6 +1773,23 @@ body:has(.detail-page.is-active) .footer {
   transform: translate3d(0, 0, 0);
 }
 
+.detail-page .cover.detail-loading-cover {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.detail-page .detail-loading-title {
+  position: absolute;
+  right: var(--edge-gap);
+  bottom: var(--edge-gap);
+  z-index: 20;
+  width: min(28vw, 220px);
+  height: calc(var(--font-size) * 1.35);
+  background: rgb(0 0 0 / 0.16);
+}
+
 .detail-page .detail-row {
   display: block;
   width: 100%;

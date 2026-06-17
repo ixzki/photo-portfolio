@@ -8,9 +8,14 @@ import ImageLoader from "@/components/ImageLoader";
 import { getProjects, getVisibleProjectBySlug } from "@/lib/db";
 import { Project, Row } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 type DetailPageProps = { params: Promise<{ slug: string }> };
+
+export async function generateStaticParams() {
+  const projects = await getProjects();
+  return projects.map((project) => ({ slug: project.slug }));
+}
 
 export async function generateMetadata({ params }: DetailPageProps): Promise<Metadata> {
   const { slug } = await params;
