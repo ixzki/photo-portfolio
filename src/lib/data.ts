@@ -209,6 +209,7 @@ export const seedSettings: SiteSettings = {
     { id: "location", label: "base", value: "可远程协作" },
   ],
   avatarUrl: "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=2000&q=88",
+  faviconUrl: "/favicon.ico",
   copyright: "摄影作品集",
   icp: "",
 };

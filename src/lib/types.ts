@@ -95,6 +95,7 @@ export interface SiteSettings {
   location: string;
   contacts: ContactItem[];
   avatarUrl: string;
+  faviconUrl: string;
   copyright: string;        // 版权信息
   icp: string;              // 备案号
 }

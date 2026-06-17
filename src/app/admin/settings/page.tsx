@@ -11,6 +11,7 @@ interface Settings {
   location: string;
   contacts: ContactItem[];
   avatarUrl: string;
+  faviconUrl: string;
   copyright: string;
   icp: string;
 }
@@ -23,7 +24,7 @@ function normalizeSettings(data: Settings): Settings {
         { id: "location", label: "base", value: data.location || "" },
       ].filter((item) => item.value);
 
-  return { ...data, contacts };
+  return { ...data, faviconUrl: data.faviconUrl || "/favicon.ico", contacts };
 }
 
 export default function AdminSettingsPage() {
@@ -151,6 +152,14 @@ export default function AdminSettingsPage() {
             label="头像"
             value={settings.avatarUrl}
             onChange={(value) => updateField("avatarUrl", value)}
+          />
+        </div>
+        <div className="admin-form-group">
+          <AdminImageField
+            label="网站标题图标（favicon）"
+            value={settings.faviconUrl}
+            onChange={(value) => updateField("faviconUrl", value)}
+            placeholder="/favicon.ico 或 https://..."
           />
         </div>
       </form>

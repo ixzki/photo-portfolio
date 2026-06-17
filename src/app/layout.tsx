@@ -23,6 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const settings = await getSettings();
     const description = (settings.aboutText || "个人摄影作品集").split("\n").filter(Boolean)[0] || "个人摄影作品集";
+    const faviconUrl = settings.faviconUrl || "/favicon.ico";
 
     return {
       title: {
@@ -30,6 +31,10 @@ export async function generateMetadata(): Promise<Metadata> {
         template: `%s | ${settings.siteName}`,
       },
       description,
+      icons: {
+        icon: [{ url: faviconUrl }],
+        shortcut: [faviconUrl],
+      },
       openGraph: {
         title: settings.siteName,
         description,
@@ -47,6 +52,10 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       title: "摄影作品集",
       description: "个人摄影作品集",
+      icons: {
+        icon: [{ url: "/favicon.ico" }],
+        shortcut: ["/favicon.ico"],
+      },
     };
   }
 }

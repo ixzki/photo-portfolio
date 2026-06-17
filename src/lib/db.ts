@@ -30,7 +30,7 @@ function normalizeSettings(settings: Partial<SiteSettings>): SiteSettings {
         { id: "location", label: "base", value: base.location || "" },
       ].filter((item) => item.value);
 
-  return { ...base, contacts };
+  return { ...base, faviconUrl: base.faviconUrl || "/favicon.ico", contacts };
 }
 
 function normalizeProject(project: Project): Project {
