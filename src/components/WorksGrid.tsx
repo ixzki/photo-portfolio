@@ -25,6 +25,7 @@ export default function WorksGrid({ projects }: { projects: Project[] }) {
                   width={project.thumbW}
                   height={project.thumbH}
                   sizes="(orientation: portrait) 50vw, 25vw"
+                  variant="thumb"
                 />
               </div>
               <div className="works-item-text">

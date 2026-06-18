@@ -1,9 +1,9 @@
 import Link from "next/link";
 import AdminProjectsTable from "@/components/AdminProjectsTable";
-import { getAllProjects, getFeatures } from "@/lib/db";
+import { getFeatureSummary } from "@/lib/db";
 
 export default async function AdminProjectsPage() {
-  const [projects, features] = await Promise.all([getAllProjects(), getFeatures()]);
+  const { projects, features } = await getFeatureSummary();
 
   return (
     <div>

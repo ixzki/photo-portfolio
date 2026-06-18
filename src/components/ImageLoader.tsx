@@ -2,6 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import type { ImageLoaderProps as NextImageLoaderProps } from "next/image";
+import {
+  getImageVariantQuality,
+  toResponsiveImageUrl,
+  toTinyPlaceholderUrl,
+  type ImageVariant,
+} from "@/lib/image-variants";
 
 interface ImageLoaderProps {
   src: string;
@@ -12,25 +19,8 @@ interface ImageLoaderProps {
   height?: number;
   sizes?: string;
   style?: React.CSSProperties;
-}
-
-function resizedUrl(src: string, width: number, quality: number): string {
-  try {
-    const url = new URL(src);
-    if (url.hostname.includes("unsplash.com")) {
-      url.searchParams.set("auto", "format");
-      url.searchParams.set("fit", url.searchParams.get("fit") || "crop");
-      url.searchParams.set("w", String(width));
-      url.searchParams.set("q", String(quality));
-      return url.toString();
-    }
-  } catch {}
-  return "";
-}
-
-/** Generate a tiny placeholder URL for LQIP */
-function thumbUrl(src: string): string {
-  return resizedUrl(src, 24, 10);
+  variant?: ImageVariant;
+  quality?: number;
 }
 
 export default function ImageLoader({
@@ -42,13 +32,22 @@ export default function ImageLoader({
   height,
   sizes,
   style,
+  variant = "detail",
+  quality,
 }: ImageLoaderProps) {
   const [loadedSrc, setLoadedSrc] = useState(priority ? src : "");
   const [errorSrc, setErrorSrc] = useState("");
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const thumb = thumbUrl(src);
+  const thumb = toTinyPlaceholderUrl(src);
   const imageWidth = width || 1440;
   const imageHeight = height || 960;
+  const imageQuality = quality ?? getImageVariantQuality(variant);
+  const imageLoader = ({ src: loaderSrc, width: loaderWidth, quality: loaderQuality }: NextImageLoaderProps) =>
+    toResponsiveImageUrl(loaderSrc, {
+      width: loaderWidth,
+      quality: loaderQuality ?? imageQuality,
+      variant,
+    });
 
   useEffect(() => {
     if (priority) return;
@@ -84,10 +83,11 @@ export default function ImageLoader({
   const commonProps = {
     ref: imgRef,
     src,
+    loader: imageLoader,
     className: finalClass,
     sizes: sizes || "100vw",
     priority,
-    unoptimized: true,
+    quality: imageQuality,
     loading: priority ? "eager" as const : "lazy" as const,
     fetchPriority: priority ? "high" as const : "auto" as const,
     onLoad: () => setLoadedSrc(src),

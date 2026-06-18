@@ -1,9 +1,9 @@
 import Link from "next/link";
 import AdminPreviewImage from "@/components/AdminPreviewImage";
-import { getAllProjects, getFeatures, getMediaItems } from "@/lib/db";
+import { getFeatureSummary, getMediaItems } from "@/lib/db";
 
 export default async function AdminDashboard() {
-  const [projects, features, media] = await Promise.all([getAllProjects(), getFeatures(), getMediaItems()]);
+  const [{ projects, features }, media] = await Promise.all([getFeatureSummary(), getMediaItems()]);
   const visible = projects.filter((project) => project.visible).length;
   const drafts = projects.filter((project) => !project.visible).length;
   const featuredSlugs = new Set(features.filter((feature) => feature.type === "project").map((feature) => feature.projectSlug));

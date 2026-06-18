@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { adminPreviewImageUrl } from "@/lib/admin-image-utils.mjs";
 
 interface AdminPreviewImageProps {
   src: string;
@@ -19,9 +20,11 @@ export default function AdminPreviewImage({
   sizes = "320px",
   draggable = false,
 }: AdminPreviewImageProps) {
+  const previewSrc = adminPreviewImageUrl(src, width);
+
   return (
     <Image
-      src={src}
+      src={previewSrc}
       alt={alt}
       className={className}
       width={width}

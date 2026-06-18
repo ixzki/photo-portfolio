@@ -33,6 +33,7 @@ export default function AboutPageClient({ settings }: { settings: Settings }) {
           className="avatar load-fade"
           priority
           sizes="(orientation: portrait) 100vw, 65vw"
+          variant="avatar"
         />
       </div>
       <div className="about-text-container">

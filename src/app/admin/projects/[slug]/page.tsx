@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import AdminImageField from "@/components/AdminImageField";
-import AdminPreviewImage from "@/components/AdminPreviewImage";
-import { LAYOUT_OPTIONS, FeatureItem, Image, LayoutType, Project } from "@/lib/types";
+import AdminProjectRowsEditor from "@/components/AdminProjectRowsEditor";
+import { FeatureItem, Image, LayoutType, Project } from "@/lib/types";
 
 function isHttpUrl(value: string) {
   try {
@@ -40,46 +40,6 @@ function moveById<T extends { id: string }>(items: T[], draggedId: string, targe
   return next;
 }
 
-function RowImageAdder({ onAdd }: { onAdd: (image: Omit<Image, "id" | "order">) => Promise<void> }) {
-  const [url, setUrl] = useState("");
-  const [width, setWidth] = useState(1440);
-  const [height, setHeight] = useState(960);
-  const [alt, setAlt] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const handleAdd = async () => {
-    if (!url) return;
-    setSaving(true);
-    await onAdd({ url, width, height, alt: alt || null });
-    setSaving(false);
-    setUrl("");
-    setAlt("");
-    setWidth(1440);
-    setHeight(960);
-  };
-
-  return (
-    <div className="admin-row-image-adder">
-      <AdminImageField
-        value={url}
-        onChange={setUrl}
-        onAlt={setAlt}
-        onSize={(nextWidth, nextHeight) => {
-          setWidth(nextWidth || 1440);
-          setHeight(nextHeight || 960);
-        }}
-        placeholder="粘贴图片 URL"
-      />
-      <div className="admin-form-row">
-        <input value={alt} onChange={(event) => setAlt(event.target.value)} className="admin-input" placeholder="描述 / alt" />
-        <button type="button" onClick={handleAdd} disabled={!url || saving} className="admin-btn-sm">
-          {saving ? "添加中..." : "添加图片"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function EditProjectPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
@@ -108,19 +68,19 @@ export default function EditProjectPage() {
     () => Boolean(project && features.some((feature) => feature.type === "project" && feature.projectSlug === project.slug)),
     [features, project],
   );
+  const projectId = project?.id;
+  const projectRows = useMemo(() => project?.rows ?? [], [project?.rows]);
 
-  if (!project) return <p>加载中...</p>;
-
-  const showMessage = (nextMessage: string) => {
+  const showMessage = useCallback((nextMessage: string) => {
     setMessage(nextMessage);
     window.setTimeout(() => setMessage(""), 2400);
-  };
+  }, []);
 
-  const setProjectFromServer = (updated: Project) => {
+  const setProjectFromServer = useCallback((updated: Project) => {
     setProject(updated);
-  };
+  }, []);
 
-  const updateRowLayoutInState = (rowId: string, layout: LayoutType) => {
+  const updateRowLayoutInState = useCallback((rowId: string, layout: LayoutType) => {
     setProject((current) => (
       current
         ? {
@@ -129,14 +89,15 @@ export default function EditProjectPage() {
           }
         : current
     ));
-  };
+  }, []);
 
-  const updateField = (field: keyof Project, value: string | number | boolean) => {
+  const updateField = useCallback((field: keyof Project, value: string | number | boolean) => {
     setProject((current) => (current ? { ...current, [field]: value } : current));
-  };
+  }, []);
 
-  const handleSave = async (event?: React.FormEvent) => {
+  const handleSave = useCallback(async (event?: React.FormEvent) => {
     event?.preventDefault();
+    if (!project) return;
     const errors = validateProject(project);
     if (errors.length) {
       showMessage(errors[0]);
@@ -161,19 +122,21 @@ export default function EditProjectPage() {
     setProject(updated);
     showMessage("保存成功");
     if (updated.slug !== params.slug) router.replace(`/admin/projects/${updated.slug}`);
-  };
+  }, [params.slug, project, router, showMessage]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
+    if (!project) return;
     if (!confirm("确定删除此作品？此操作不可撤销，关联首页精选也会被移除。")) return;
     const res = await fetch(`/api/projects?id=${project.id}`, { method: "DELETE" });
     if (res.ok) router.push("/admin/projects");
-  };
+  }, [project, router]);
 
-  const handleAddRow = async () => {
+  const handleAddRow = useCallback(async () => {
+    if (!projectId) return;
     const res = await fetch("/api/projects", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: project.id, action: "addRow", layout: newRowLayout }),
+      body: JSON.stringify({ projectId, action: "addRow", layout: newRowLayout }),
     });
     if (!res.ok) {
       const error = await res.json().catch(() => ({ error: "请先提供在线数据库链接 DATABASE_URL。" }));
@@ -181,26 +144,28 @@ export default function EditProjectPage() {
       return;
     }
     setProjectFromServer(await res.json());
-  };
+  }, [newRowLayout, projectId, setProjectFromServer, showMessage]);
 
-  const handleDeleteRow = async (rowId: string) => {
+  const handleDeleteRow = useCallback(async (rowId: string) => {
+    if (!projectId) return;
     if (!confirm("删除此行？")) return;
     const res = await fetch("/api/projects", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: project.id, action: "deleteRow", rowId }),
+      body: JSON.stringify({ projectId, action: "deleteRow", rowId }),
     });
     if (res.ok) setProjectFromServer(await res.json());
-  };
+  }, [projectId, setProjectFromServer]);
 
-  const handleUpdateRowLayout = async (rowId: string, layout: LayoutType) => {
-    const previousLayout = project.rows.find((row) => row.id === rowId)?.layout;
+  const handleUpdateRowLayout = useCallback(async (rowId: string, layout: LayoutType) => {
+    if (!projectId) return;
+    const previousLayout = projectRows.find((row) => row.id === rowId)?.layout;
     updateRowLayoutInState(rowId, layout);
 
     const res = await fetch("/api/projects", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: project.id, action: "updateRow", rowId, data: { layout } }),
+      body: JSON.stringify({ projectId, action: "updateRow", rowId, data: { layout } }),
     });
 
     if (!res.ok) {
@@ -212,13 +177,14 @@ export default function EditProjectPage() {
 
     setProjectFromServer(await res.json());
     showMessage("行形式已保存");
-  };
+  }, [projectId, projectRows, setProjectFromServer, showMessage, updateRowLayoutInState]);
 
-  const handleAddImage = async (rowId: string, image: Omit<Image, "id" | "order">) => {
+  const handleAddImage = useCallback(async (rowId: string, image: Omit<Image, "id" | "order">) => {
+    if (!projectId) return;
     const res = await fetch("/api/projects", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: project.id, action: "addImage", rowId, image }),
+      body: JSON.stringify({ projectId, action: "addImage", rowId, image }),
     });
     if (!res.ok) {
       const error = await res.json().catch(() => ({ error: "添加失败" }));
@@ -226,47 +192,50 @@ export default function EditProjectPage() {
       return;
     }
     setProjectFromServer(await res.json());
-  };
+  }, [projectId, setProjectFromServer, showMessage]);
 
-  const handleUpdateImage = async (rowId: string, imageId: string, data: Partial<Image>) => {
+  const handleUpdateImage = useCallback(async (rowId: string, imageId: string, data: Partial<Image>) => {
+    if (!projectId) return;
     const res = await fetch("/api/projects", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: project.id, action: "updateImage", rowId, imageId, data }),
+      body: JSON.stringify({ projectId, action: "updateImage", rowId, imageId, data }),
     });
     if (res.ok) setProjectFromServer(await res.json());
-  };
+  }, [projectId, setProjectFromServer]);
 
-  const handleDeleteImage = async (rowId: string, imageId: string) => {
+  const handleDeleteImage = useCallback(async (rowId: string, imageId: string) => {
+    if (!projectId) return;
     if (!confirm("删除此图片？")) return;
     const res = await fetch("/api/projects", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: project.id, action: "deleteImage", rowId, imageId }),
+      body: JSON.stringify({ projectId, action: "deleteImage", rowId, imageId }),
     });
     if (res.ok) setProjectFromServer(await res.json());
-  };
+  }, [projectId, setProjectFromServer]);
 
-  const moveRowBefore = (targetRowId: string) => {
+  const moveRowBefore = useCallback((targetRowId: string) => {
     if (!draggedRowId) return;
     setProject((current) => {
       if (!current) return current;
       return { ...current, rows: moveById(current.rows, draggedRowId, targetRowId) };
     });
-  };
+  }, [draggedRowId]);
 
-  const persistRowOrder = async () => {
+  const persistRowOrder = useCallback(async () => {
+    if (!projectId) return;
     setDraggedRowId(null);
-    const rowIds = project.rows.map((row) => row.id);
+    const rowIds = projectRows.map((row) => row.id);
     const res = await fetch("/api/projects", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: project.id, action: "reorderRows", rowIds }),
+      body: JSON.stringify({ projectId, action: "reorderRows", rowIds }),
     });
     if (res.ok) setProjectFromServer(await res.json());
-  };
+  }, [projectId, projectRows, setProjectFromServer]);
 
-  const moveImageBefore = (rowId: string, targetImageId: string) => {
+  const moveImageBefore = useCallback((rowId: string, targetImageId: string) => {
     if (!draggedImage || draggedImage.rowId !== rowId) return;
     setProject((current) => {
       if (!current) return current;
@@ -277,20 +246,39 @@ export default function EditProjectPage() {
         )),
       };
     });
-  };
+  }, [draggedImage]);
 
-  const persistImageOrder = async (rowId: string) => {
+  const persistImageOrder = useCallback(async (rowId: string) => {
+    if (!projectId) return;
     setDraggedImage(null);
-    const row = project.rows.find((item) => item.id === rowId);
+    const row = projectRows.find((item) => item.id === rowId);
     if (!row) return;
     const imageIds = row.images.map((image) => image.id);
     const res = await fetch("/api/projects", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: project.id, action: "reorderImages", rowId, imageIds }),
+      body: JSON.stringify({ projectId, action: "reorderImages", rowId, imageIds }),
     });
     if (res.ok) setProjectFromServer(await res.json());
-  };
+  }, [projectId, projectRows, setProjectFromServer]);
+
+  const handleNewRowLayoutChange = useCallback((layout: LayoutType) => {
+    setNewRowLayout(layout);
+  }, []);
+
+  const handleRowDragStart = useCallback((rowId: string) => {
+    setDraggedRowId(rowId);
+  }, []);
+
+  const handleImageDragStart = useCallback((rowId: string, imageId: string) => {
+    setDraggedImage({ rowId, imageId });
+  }, []);
+
+  const handleUpdateImageAlt = useCallback((rowId: string, imageId: string, alt: string) => {
+    void handleUpdateImage(rowId, imageId, { alt: alt || null });
+  }, [handleUpdateImage]);
+
+  if (!project) return <p>加载中...</p>;
 
   return (
     <div>
@@ -418,101 +406,25 @@ export default function EditProjectPage() {
           )}
         </div>
 
-        <div className="admin-section-title-row">
-          <h2 className="admin-subheading">图片行 ({project.rows.length})</h2>
-          <select value={newRowLayout} onChange={(event) => setNewRowLayout(event.target.value as LayoutType)} className="admin-input admin-layout-select">
-            {LAYOUT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-          <button type="button" onClick={handleAddRow} className="admin-btn-sm">添加行</button>
-        </div>
-
-        {project.rows.map((row, rowIndex) => (
-          <div
-            key={row.id}
-            className={`admin-project-row${draggedRowId === row.id ? " admin-dragging" : ""}`}
-            onDragOver={(event) => {
-              if (!draggedRowId || draggedRowId === row.id) return;
-              event.preventDefault();
-              moveRowBefore(row.id);
-            }}
-          >
-            <div className="admin-project-row-head">
-              <div className="admin-row-layout-control">
-                <span
-                  className="admin-drag-handle"
-                  draggable
-                  title="拖动排序"
-                  onDragStart={(event) => {
-                    event.dataTransfer.effectAllowed = "move";
-                    setDraggedRowId(row.id);
-                  }}
-                  onDragEnd={() => void persistRowOrder()}
-                >
-                  ::
-                </span>
-                <span className="admin-muted">行 #{rowIndex}</span>
-                <select
-                  value={row.layout}
-                  onChange={(event) => handleUpdateRowLayout(row.id, event.target.value as LayoutType)}
-                  className="admin-input admin-layout-select"
-                >
-                  {LAYOUT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                <span className="admin-muted">
-                  {LAYOUT_OPTIONS.find((option) => option.value === row.layout)?.desc}
-                </span>
-              </div>
-              <button type="button" onClick={() => handleDeleteRow(row.id)} className="admin-btn-sm admin-btn-danger">删除行</button>
-            </div>
-
-            <RowImageAdder onAdd={(image) => handleAddImage(row.id, image)} />
-
-            <div className="admin-image-grid">
-              {row.images.map((image) => (
-                <div
-                  key={image.id}
-                  className={`admin-image-card${draggedImage?.imageId === image.id ? " admin-dragging" : ""}`}
-                  onDragOver={(event) => {
-                    if (!draggedImage || draggedImage.rowId !== row.id || draggedImage.imageId === image.id) return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    moveImageBefore(row.id, image.id);
-                  }}
-                >
-                  <span
-                    className="admin-drag-handle"
-                    draggable
-                    title="拖动排序"
-                    onDragStart={(event) => {
-                      event.stopPropagation();
-                      event.dataTransfer.effectAllowed = "move";
-                      setDraggedImage({ rowId: row.id, imageId: image.id });
-                    }}
-                    onDragEnd={(event) => {
-                      event.stopPropagation();
-                      void persistImageOrder(row.id);
-                    }}
-                  >
-                    ::
-                  </span>
-                  <AdminPreviewImage src={image.url} alt={image.alt || ""} width={320} height={240} sizes="320px" />
-                  <input
-                    defaultValue={image.alt || ""}
-                    onBlur={(event) => handleUpdateImage(row.id, image.id, { alt: event.target.value || null })}
-                    className="admin-input"
-                    placeholder="描述 / alt"
-                  />
-                  <div className="admin-image-meta">{image.width} x {image.height}</div>
-                  <button type="button" onClick={() => handleDeleteImage(row.id, image.id)} className="admin-image-delete">×</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+        <AdminProjectRowsEditor
+          rows={project.rows}
+          newRowLayout={newRowLayout}
+          draggedRowId={draggedRowId}
+          draggedImage={draggedImage}
+          onNewRowLayoutChange={handleNewRowLayoutChange}
+          onAddRow={handleAddRow}
+          onDeleteRow={handleDeleteRow}
+          onUpdateRowLayout={handleUpdateRowLayout}
+          onRowDragStart={handleRowDragStart}
+          onRowDragOver={moveRowBefore}
+          onRowDragEnd={persistRowOrder}
+          onAddImage={handleAddImage}
+          onImageDragStart={handleImageDragStart}
+          onImageDragOver={moveImageBefore}
+          onImageDragEnd={persistImageOrder}
+          onUpdateImageAlt={handleUpdateImageAlt}
+          onDeleteImage={handleDeleteImage}
+        />
 
         <div className="admin-actions admin-form-actions">
           <button type="submit" disabled={saving} className="admin-btn">

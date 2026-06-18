@@ -1,5 +1,7 @@
 import { neon } from "@neondatabase/serverless";
+import { cache } from "react";
 import { seedFeatures, seedProjects, seedSettings } from "./data";
+import { hasManualProjectOrder, sortProjectsForDisplay } from "./project-order-utils.mjs";
 import { FeatureItem, Image, LayoutType, MediaItem, Project, Row, SiteSettings } from "./types";
 
 type SqlClient = ReturnType<typeof neon>;
@@ -12,7 +14,7 @@ function databaseUrl() {
 }
 
 function getSql() {
-  if (!databaseUrl()) return null;
+  if (!databaseUrl()) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
   if (!sqlClient) sqlClient = neon(databaseUrl());
   return sqlClient;
 }
@@ -37,6 +39,7 @@ function normalizeProject(project: Project): Project {
   const coverUrl = project.coverUrl || project.thumbUrl || "";
   return {
     ...project,
+    createdAt: project.createdAt || undefined,
     coverUrl,
     thumbUrl: project.thumbUrl || coverUrl,
     featureUrl: project.featureUrl || coverUrl,
@@ -150,14 +153,41 @@ async function ensureSchema(sql: SqlClient) {
       }
     })();
   }
-  return schemaReady;
+  try {
+    await schemaReady;
+  } catch (error) {
+    schemaReady = null;
+    throw error;
+  }
+}
+
+export async function setupDatabaseSchema() {
+  await ensureSchema(getSql());
 }
 
 async function db() {
-  const sql = getSql();
-  if (!sql) return null;
-  await ensureSchema(sql);
-  return sql;
+  return getSql();
+}
+
+async function updateProjectData(
+  projectId: string,
+  updater: (current: Project) => Project | null,
+): Promise<Project | null> {
+  const sql = await db();
+
+  const rows = await sql("SELECT data FROM portfolio_projects WHERE id = $1 LIMIT 1", [projectId]) as Array<{ data: Project }>;
+  if (!rows[0]) return null;
+
+  const current = normalizeProject(rows[0].data);
+  const next = updater(current);
+  if (!next) return null;
+
+  const updated = normalizeProject({ ...next, id: current.id });
+  const updatedRows = await sql(
+    "UPDATE portfolio_projects SET slug = $1, visible = $2, order_index = $3, data = $4::jsonb WHERE id = $5 RETURNING data",
+    [updated.slug, updated.visible, updated.order, JSON.stringify(updated), projectId],
+  ) as Array<{ data: Project }>;
+  return updatedRows[0] ? normalizeProject(updatedRows[0].data) : null;
 }
 
 // ---- Health check ----
@@ -166,9 +196,8 @@ export function hasDatabase(): boolean {
 }
 
 export async function checkConnection(): Promise<boolean> {
-  const sql = getSql();
-  if (!sql) return false;
   try {
+    const sql = getSql();
     await sql("SELECT 1");
     return true;
   } catch {
@@ -177,67 +206,91 @@ export async function checkConnection(): Promise<boolean> {
 }
 
 // ---- Projects ----
-export async function getProjects(): Promise<Project[]> {
+async function readProjects(visibleOnly: boolean): Promise<Project[]> {
   const sql = await db();
-  if (!sql) return seedProjects.map(normalizeProject);
-
   const rows = await sql(
-    "SELECT data FROM portfolio_projects WHERE visible = true ORDER BY order_index ASC"
+    visibleOnly
+      ? "SELECT data FROM portfolio_projects WHERE visible = true"
+      : "SELECT data FROM portfolio_projects"
   ) as Array<{ data: Project }>;
-  return rows.map((r) => normalizeProject(r.data));
+  return sortProjectsForDisplay(rows.map((r) => normalizeProject(r.data)));
 }
 
-export async function getAllProjects(): Promise<Project[]> {
-  const sql = await db();
-  if (!sql) return seedProjects.map(normalizeProject);
-
-  const rows = await sql(
-    "SELECT data FROM portfolio_projects ORDER BY order_index ASC"
-  ) as Array<{ data: Project }>;
-  return rows.map((r) => normalizeProject(r.data));
+async function getProjectsImpl(): Promise<Project[]> {
+  return readProjects(true);
 }
 
-export async function getProjectById(id: string): Promise<Project | null> {
-  const sql = await db();
-  if (!sql) return seedProjects.find((p) => p.id === id) ?? null;
+async function getAllProjectsImpl(): Promise<Project[]> {
+  return readProjects(false);
+}
 
+export const getProjects = cache(getProjectsImpl);
+export const getAllProjects = cache(getAllProjectsImpl);
+
+export const getProjectById = cache(async function getProjectById(id: string): Promise<Project | null> {
+  const sql = await db();
   const rows = await sql("SELECT data FROM portfolio_projects WHERE id = $1 LIMIT 1", [id]) as Array<{ data: Project }>;
   return rows[0] ? normalizeProject(rows[0].data) : null;
-}
+});
 
-export async function getProjectBySlug(slug: string): Promise<Project | null> {
+export const getProjectBySlug = cache(async function getProjectBySlug(slug: string): Promise<Project | null> {
   const sql = await db();
-  if (!sql) return seedProjects.find((p) => p.slug === slug) ?? null;
-
   const rows = await sql("SELECT data FROM portfolio_projects WHERE slug = $1 LIMIT 1", [slug]) as Array<{ data: Project }>;
   return rows[0] ? normalizeProject(rows[0].data) : null;
-}
+});
 
-export async function getVisibleProjectBySlug(slug: string): Promise<Project | null> {
+export const getVisibleProjectBySlug = cache(async function getVisibleProjectBySlug(slug: string): Promise<Project | null> {
   const sql = await db();
-  if (!sql) {
-    const project = seedProjects.find((p) => p.slug === slug && p.visible !== false);
-    return project ? normalizeProject(project) : null;
-  }
-
   const rows = await sql(
     "SELECT data FROM portfolio_projects WHERE slug = $1 AND visible = true LIMIT 1",
     [slug],
   ) as Array<{ data: Project }>;
   return rows[0] ? normalizeProject(rows[0].data) : null;
-}
+});
+
+export const getProjectDetailData = cache(async function getProjectDetailData(slug: string): Promise<{
+  project: Project | null;
+  nextProject: Pick<Project, "slug" | "titleZh"> | null;
+}> {
+  const projects = await getProjects();
+  const currentIndex = projects.findIndex((project) => project.slug === slug);
+  const project = currentIndex >= 0 ? projects[currentIndex] : null;
+  const nextProject = projects.length > 0
+    ? projects[(currentIndex >= 0 ? currentIndex + 1 : 0) % projects.length]
+    : null;
+
+  return {
+    project,
+    nextProject: nextProject ? { slug: nextProject.slug, titleZh: nextProject.titleZh } : null,
+  };
+});
 
 export async function createProject(input: ProjectCreateInput): Promise<Project> {
+  const sql = await db();
+  const existingRows = await sql("SELECT data FROM portfolio_projects") as Array<{ data: Project }>;
+  const existingProjects = existingRows.map((row) => normalizeProject(row.data));
+  const requestedOrder = Number(input.order);
+  const hasRequestedOrder = Number.isFinite(requestedOrder) && requestedOrder > 0;
+  const shouldShiftManualOrder = !hasRequestedOrder && hasManualProjectOrder(existingProjects);
+
+  if (shouldShiftManualOrder) {
+    for (const existingProject of existingProjects) {
+      const shifted = normalizeProject({ ...existingProject, order: existingProject.order + 1 });
+      await sql(
+        "UPDATE portfolio_projects SET order_index = $1, data = $2::jsonb WHERE id = $3",
+        [shifted.order, JSON.stringify(shifted), shifted.id],
+      );
+    }
+  }
+
   const project = normalizeProject({
     ...input,
     id: generateId(),
+    createdAt: input.createdAt || new Date().toISOString(),
     rows: [],
     visible: input.visible ?? true,
-    order: input.order ?? 0,
+    order: hasRequestedOrder ? requestedOrder : 0,
   });
-
-  const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   await sql(
     "INSERT INTO portfolio_projects (id, slug, visible, order_index, data) VALUES ($1, $2, $3, $4, $5::jsonb)",
@@ -247,29 +300,15 @@ export async function createProject(input: ProjectCreateInput): Promise<Project>
 }
 
 export async function updateProject(id: string, data: Partial<Project>): Promise<Project | null> {
-  const current = await getProjectById(id);
-  if (!current) return null;
-  const updated = normalizeProject({ ...current, ...data, id: current.id });
-
-  const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
-
-  await sql(
-    "UPDATE portfolio_projects SET slug = $1, visible = $2, order_index = $3, data = $4::jsonb WHERE id = $5",
-    [updated.slug, updated.visible, updated.order, JSON.stringify(updated), id],
-  );
-  return updated;
+  return updateProjectData(id, (current) => ({ ...current, ...data, id: current.id }));
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
-  const project = await getProjectById(id);
-  if (!project) return false;
-
-  const rows = await sql("DELETE FROM portfolio_projects WHERE id = $1 RETURNING id", [id]) as Array<{ id: string }>;
+  const rows = await sql("DELETE FROM portfolio_projects WHERE id = $1 RETURNING data", [id]) as Array<{ data: Project }>;
   if (rows.length === 0) return false;
+  const project = normalizeProject(rows[0].data);
 
   await sql(
     "DELETE FROM portfolio_features WHERE data->>'type' = 'project' AND data->>'projectSlug' = $1",
@@ -288,7 +327,6 @@ export async function reorderProjects(ids: string[]): Promise<Project[]> {
     .filter((project): project is Project => project !== null);
 
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   for (const project of reordered) {
     await sql(
@@ -299,166 +337,183 @@ export async function reorderProjects(ids: string[]): Promise<Project[]> {
   return reordered;
 }
 
-export async function addRow(projectId: string, layout: LayoutType): Promise<Row | null> {
-  const project = await getProjectById(projectId);
-  if (!project) return null;
-  const row: Row = { id: generateId(), layout, order: project.rows.length, images: [] };
-  await updateProject(projectId, { rows: [...project.rows, row] });
-  return row;
+export async function addRow(projectId: string, layout: LayoutType): Promise<Project | null> {
+  return updateProjectData(projectId, (project) => {
+    const row: Row = { id: generateId(), layout, order: project.rows.length, images: [] };
+    return { ...project, rows: [...project.rows, row] };
+  });
 }
 
-export async function updateRow(projectId: string, rowId: string, data: Partial<Row>): Promise<Row | null> {
-  const project = await getProjectById(projectId);
-  if (!project) return null;
-  const row = project.rows.find((item) => item.id === rowId);
-  if (!row) return null;
-  const rows = project.rows.map((item) => (item.id === rowId ? { ...item, ...data } : item));
-  await updateProject(projectId, { rows });
-  return rows.find((item) => item.id === rowId) || null;
+export async function updateRow(projectId: string, rowId: string, data: Partial<Row>): Promise<Project | null> {
+  return updateProjectData(projectId, (project) => {
+    if (!project.rows.some((item) => item.id === rowId)) return null;
+    const rows = project.rows.map((item) => (item.id === rowId ? { ...item, ...data } : item));
+    return { ...project, rows };
+  });
 }
 
-export async function deleteRow(projectId: string, rowId: string): Promise<boolean> {
-  const project = await getProjectById(projectId);
-  if (!project) return false;
-  const nextRows = project.rows.filter((row) => row.id !== rowId);
-  if (nextRows.length === project.rows.length) return false;
-  await updateProject(projectId, { rows: nextRows.map((row, order) => ({ ...row, order })) });
-  return true;
+export async function deleteRow(projectId: string, rowId: string): Promise<Project | null> {
+  return updateProjectData(projectId, (project) => {
+    const nextRows = project.rows.filter((row) => row.id !== rowId);
+    if (nextRows.length === project.rows.length) return null;
+    return { ...project, rows: nextRows.map((row, order) => ({ ...row, order })) };
+  });
 }
 
 export async function reorderRows(projectId: string, rowIds: string[]): Promise<Project | null> {
-  const project = await getProjectById(projectId);
-  if (!project) return null;
-  const rowById = new Map(project.rows.map((row) => [row.id, row]));
-  const orderedRows = rowIds
-    .map((rowId, order) => {
-      const row = rowById.get(rowId);
-      return row ? { ...row, order } : null;
-    })
-    .filter((row): row is Row => row !== null);
+  return updateProjectData(projectId, (project) => {
+    const rowById = new Map(project.rows.map((row) => [row.id, row]));
+    const orderedRows = rowIds
+      .map((rowId, order) => {
+        const row = rowById.get(rowId);
+        return row ? { ...row, order } : null;
+      })
+      .filter((row): row is Row => row !== null);
 
-  const missingRows = project.rows
-    .filter((row) => !rowIds.includes(row.id))
-    .map((row, index) => ({ ...row, order: orderedRows.length + index }));
+    const rowIdSet = new Set(rowIds);
+    const missingRows = project.rows
+      .filter((row) => !rowIdSet.has(row.id))
+      .map((row, index) => ({ ...row, order: orderedRows.length + index }));
 
-  const rows = [...orderedRows, ...missingRows];
-  return updateProject(projectId, { rows });
-}
-
-export async function addImage(projectId: string, rowId: string, image: Omit<Image, "id" | "order">): Promise<Image | null> {
-  const project = await getProjectById(projectId);
-  if (!project) return null;
-  const row = project.rows.find((item) => item.id === rowId);
-  if (!row) return null;
-  const img: Image = { ...image, id: generateId(), order: row.images.length };
-  const rows = project.rows.map((item) => (
-    item.id === rowId ? { ...item, images: [...item.images, img] } : item
-  ));
-  await updateProject(projectId, { rows });
-  return img;
-}
-
-export async function updateImage(projectId: string, rowId: string, imageId: string, data: Partial<Image>): Promise<Image | null> {
-  const project = await getProjectById(projectId);
-  if (!project) return null;
-  let updatedImage: Image | null = null;
-  const rows = project.rows.map((row) => {
-    if (row.id !== rowId) return row;
-    return {
-      ...row,
-      images: row.images.map((image) => {
-        if (image.id !== imageId) return image;
-        updatedImage = { ...image, ...data };
-        return updatedImage;
-      }),
-    };
+    return { ...project, rows: [...orderedRows, ...missingRows] };
   });
-  if (!updatedImage) return null;
-  await updateProject(projectId, { rows });
-  return updatedImage;
 }
 
-export async function deleteImage(projectId: string, rowId: string, imageId: string): Promise<boolean> {
-  const project = await getProjectById(projectId);
-  if (!project) return false;
-  let deleted = false;
-  const rows = project.rows.map((row) => {
-    if (row.id !== rowId) return row;
-    const images = row.images.filter((image) => image.id !== imageId);
-    deleted = deleted || images.length !== row.images.length;
-    return { ...row, images: images.map((image, order) => ({ ...image, order })) };
+export async function addImage(projectId: string, rowId: string, image: Omit<Image, "id" | "order">): Promise<Project | null> {
+  return updateProjectData(projectId, (project) => {
+    const row = project.rows.find((item) => item.id === rowId);
+    if (!row) return null;
+    const img: Image = { ...image, id: generateId(), order: row.images.length };
+    const rows = project.rows.map((item) => (
+      item.id === rowId ? { ...item, images: [...item.images, img] } : item
+    ));
+    return { ...project, rows };
   });
-  if (!deleted) return false;
-  await updateProject(projectId, { rows });
-  return true;
+}
+
+export async function updateImage(projectId: string, rowId: string, imageId: string, data: Partial<Image>): Promise<Project | null> {
+  return updateProjectData(projectId, (project) => {
+    let updated = false;
+    const rows = project.rows.map((row) => {
+      if (row.id !== rowId) return row;
+      return {
+        ...row,
+        images: row.images.map((image) => {
+          if (image.id !== imageId) return image;
+          updated = true;
+          return { ...image, ...data };
+        }),
+      };
+    });
+    return updated ? { ...project, rows } : null;
+  });
+}
+
+export async function deleteImage(projectId: string, rowId: string, imageId: string): Promise<Project | null> {
+  return updateProjectData(projectId, (project) => {
+    let deleted = false;
+    const rows = project.rows.map((row) => {
+      if (row.id !== rowId) return row;
+      const images = row.images.filter((image) => image.id !== imageId);
+      deleted = deleted || images.length !== row.images.length;
+      return { ...row, images: images.map((image, order) => ({ ...image, order })) };
+    });
+    return deleted ? { ...project, rows } : null;
+  });
 }
 
 export async function reorderImages(projectId: string, rowId: string, imageIds: string[]): Promise<Project | null> {
-  const project = await getProjectById(projectId);
-  if (!project) return null;
+  return updateProjectData(projectId, (project) => {
+    if (!project.rows.some((row) => row.id === rowId)) return null;
 
-  const rows = project.rows.map((row) => {
-    if (row.id !== rowId) return row;
-    const imageById = new Map(row.images.map((image) => [image.id, image]));
-    const orderedImages = imageIds
-      .map((imageId, order) => {
-        const image = imageById.get(imageId);
-        return image ? { ...image, order } : null;
-      })
-      .filter((image): image is Image => image !== null);
-    const missingImages = row.images
-      .filter((image) => !imageIds.includes(image.id))
-      .map((image, index) => ({ ...image, order: orderedImages.length + index }));
-    return { ...row, images: [...orderedImages, ...missingImages] };
+    const rows = project.rows.map((row) => {
+      if (row.id !== rowId) return row;
+      const imageById = new Map(row.images.map((image) => [image.id, image]));
+      const orderedImages = imageIds
+        .map((imageId, order) => {
+          const image = imageById.get(imageId);
+          return image ? { ...image, order } : null;
+        })
+        .filter((image): image is Image => image !== null);
+      const imageIdSet = new Set(imageIds);
+      const missingImages = row.images
+        .filter((image) => !imageIdSet.has(image.id))
+        .map((image, index) => ({ ...image, order: orderedImages.length + index }));
+      return { ...row, images: [...orderedImages, ...missingImages] };
+    });
+
+    return { ...project, rows };
   });
-
-  return updateProject(projectId, { rows });
 }
 
 // ---- Features ----
-export async function getFeatures(): Promise<FeatureItem[]> {
+async function readFeatures(visibleProjectsOnly: boolean): Promise<FeatureItem[]> {
   const sql = await db();
-  const features = sql
-    ? (await sql(
-        "SELECT data FROM portfolio_features ORDER BY order_index ASC"
-      ) as Array<{ data: FeatureItem }>).map((r) => normalizeFeature(r.data))
-    : seedFeatures.map(normalizeFeature);
+  const featureRows = await sql(
+    "SELECT data FROM portfolio_features ORDER BY order_index ASC, id ASC"
+  ) as Array<{ data: FeatureItem }>;
+  const projectRows = await sql(
+    visibleProjectsOnly
+      ? "SELECT data FROM portfolio_projects WHERE visible = true"
+      : "SELECT data FROM portfolio_projects"
+  ) as Array<{ data: Project }>;
+  const features = featureRows.map((r) => normalizeFeature(r.data));
+  const allProjects = sortProjectsForDisplay(projectRows.map((r) => normalizeProject(r.data)));
 
   // Resolve latest project titles and covers for project-type features
-  const allProjects = await getAllProjects();
   const projectBySlug = new Map(allProjects.map((p) => [p.slug, p]));
 
-  return features.map((f) => {
-    if (f.type === "project" && f.projectSlug) {
-      const project = projectBySlug.get(f.projectSlug);
-      if (project) {
+  return features
+    .map((f) => {
+      if (f.type === "project") {
+        if (!f.projectSlug) return visibleProjectsOnly ? null : f;
+        const project = projectBySlug.get(f.projectSlug);
+        if (!project) return visibleProjectsOnly ? null : f;
         return { ...f, projectTitle: project.titleZh, projectCoverUrl: project.featureUrl || project.coverUrl };
       }
-    }
-    return f;
-  });
-}
-
-export async function getPublicFeatures(): Promise<FeatureItem[]> {
-  const features = await getFeatures();
-  const visibleProjects = await getProjects();
-  const projectBySlug = new Map(visibleProjects.map((p) => [p.slug, p]));
-
-  return features
-    .map((feature) => {
-      if (feature.type !== "project") return feature;
-      if (!feature.projectSlug) return null;
-      const project = projectBySlug.get(feature.projectSlug);
-      if (!project) return null;
-      return { ...feature, projectTitle: project.titleZh, projectCoverUrl: project.featureUrl || project.coverUrl };
+      return f;
     })
     .filter((feature): feature is FeatureItem => feature !== null);
+}
+
+async function getFeaturesImpl(): Promise<FeatureItem[]> {
+  return readFeatures(false);
+}
+
+async function getPublicFeaturesImpl(): Promise<FeatureItem[]> {
+  return readFeatures(true);
+}
+
+export const getFeatures = cache(getFeaturesImpl);
+export const getPublicFeatures = cache(getPublicFeaturesImpl);
+
+export async function getFeatureSummary(): Promise<{
+  features: FeatureItem[];
+  projects: Project[];
+}> {
+  const sql = await db();
+  const featureRows = await sql(
+    "SELECT data FROM portfolio_features ORDER BY order_index ASC, id ASC"
+  ) as Array<{ data: FeatureItem }>;
+  const projectRows = await sql("SELECT data FROM portfolio_projects") as Array<{ data: Project }>;
+  const projects = sortProjectsForDisplay(projectRows.map((row) => normalizeProject(row.data)));
+  const projectBySlug = new Map(projects.map((project) => [project.slug, project]));
+  const features = featureRows.map((row) => {
+    const feature = normalizeFeature(row.data);
+    if (feature.type === "project" && feature.projectSlug) {
+      const project = projectBySlug.get(feature.projectSlug);
+      if (project) {
+        return { ...feature, projectTitle: project.titleZh, projectCoverUrl: project.featureUrl || project.coverUrl };
+      }
+    }
+    return feature;
+  });
+  return { features, projects };
 }
 
 export async function addFeature(input: Omit<FeatureItem, "id">): Promise<FeatureItem> {
   const feature = normalizeFeature({ ...input, id: generateId() });
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   await sql(
     "INSERT INTO portfolio_features (id, order_index, data) VALUES ($1, $2, $3::jsonb)",
@@ -474,7 +529,6 @@ export async function updateFeature(id: string, data: Partial<FeatureItem>): Pro
   const updated = normalizeFeature({ ...current, ...data });
 
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   await sql(
     "UPDATE portfolio_features SET order_index = $1, data = $2::jsonb WHERE id = $3",
@@ -485,7 +539,6 @@ export async function updateFeature(id: string, data: Partial<FeatureItem>): Pro
 
 export async function deleteFeature(id: string): Promise<boolean> {
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   const rows = await sql("DELETE FROM portfolio_features WHERE id = $1 RETURNING id", [id]) as Array<{ id: string }>;
   return rows.length > 0;
@@ -501,7 +554,6 @@ export async function reorderFeatures(ids: string[]): Promise<FeatureItem[]> {
     .filter((f): f is FeatureItem => f !== null);
 
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   for (const feature of reordered) {
     await sql(
@@ -515,7 +567,6 @@ export async function reorderFeatures(ids: string[]): Promise<FeatureItem[]> {
 // ---- Media library ----
 export async function getMediaItems(): Promise<MediaItem[]> {
   const sql = await db();
-  if (!sql) return [];
 
   const rows = await sql(
     "SELECT data FROM portfolio_media ORDER BY created_at DESC"
@@ -531,7 +582,6 @@ export async function addMediaItem(input: Omit<MediaItem, "id" | "createdAt"> & 
   });
 
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   await sql(
     "INSERT INTO portfolio_media (id, created_at, data) VALUES ($1, $2, $3::jsonb)",
@@ -547,7 +597,6 @@ export async function updateMediaItem(id: string, data: Partial<MediaItem>): Pro
   const updated = normalizeMediaItem({ ...current, ...data, id: current.id });
 
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   await sql(
     "UPDATE portfolio_media SET data = $1::jsonb WHERE id = $2",
@@ -558,25 +607,25 @@ export async function updateMediaItem(id: string, data: Partial<MediaItem>): Pro
 
 export async function deleteMediaItem(id: string): Promise<boolean> {
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   const rows = await sql("DELETE FROM portfolio_media WHERE id = $1 RETURNING id", [id]) as Array<{ id: string }>;
   return rows.length > 0;
 }
 
 // ---- Settings ----
-export async function getSettings(): Promise<SiteSettings> {
+async function getSettingsImpl(): Promise<SiteSettings> {
   const sql = await db();
-  if (!sql) return normalizeSettings(seedSettings);
 
   const rows = await sql("SELECT data FROM portfolio_settings WHERE id = 'default' LIMIT 1") as Array<{ data: SiteSettings }>;
-  return rows[0] ? normalizeSettings(rows[0].data) : normalizeSettings(seedSettings);
+  if (!rows[0]) throw new Error("数据库中缺少网站设置记录，请先初始化 portfolio_settings。");
+  return normalizeSettings(rows[0].data);
 }
+
+export const getSettings = cache(getSettingsImpl);
 
 export async function updateSettings(data: Partial<SiteSettings>): Promise<SiteSettings> {
   const updated = normalizeSettings({ ...(await getSettings()), ...data });
   const sql = await db();
-  if (!sql) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
 
   await sql(
     "INSERT INTO portfolio_settings (id, data) VALUES ('default', $1::jsonb) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data",

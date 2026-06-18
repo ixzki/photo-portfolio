@@ -39,6 +39,7 @@
   --font-size: calc(13px + 0.6vw);
   --small-size: calc(10px + 0.2vw);
   --edge-gap: calc(8px + 1vw);
+  --home-feature-gap: calc(5.3333px + 0.6667vw);
 }
 
 /* ---- Reset ---- */
@@ -204,7 +205,7 @@ main {
   width: 100vw;
   min-height: calc(100vh - var(--nav-h) - var(--footer-h));
   justify-content: flex-start;
-  gap: var(--edge-gap);
+  gap: var(--home-feature-gap);
   animation: page-enter-right 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 

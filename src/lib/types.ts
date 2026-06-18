@@ -54,6 +54,7 @@ export interface Row {
 export interface Project {
   id: string;
   slug: string;
+  createdAt?: string;
   titleZh: string;
   design: string;           // 设计/分类
   city: string;

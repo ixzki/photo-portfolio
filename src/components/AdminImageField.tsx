@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AdminPreviewImage from "@/components/AdminPreviewImage";
+import { isCompleteHttpUrl } from "@/lib/admin-image-utils.mjs";
 import type { MediaItem } from "@/lib/types";
 
 interface AdminImageFieldProps {
@@ -39,6 +40,14 @@ export default function AdminImageField({
   const [savingMedia, setSavingMedia] = useState(false);
   const [message, setMessage] = useState("");
   const [detectedSize, setDetectedSize] = useState({ width: 0, height: 0 });
+  const sizeTimerRef = useRef<number | null>(null);
+  const sizeRequestRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      if (sizeTimerRef.current) window.clearTimeout(sizeTimerRef.current);
+    };
+  }, []);
 
   const loadMedia = async () => {
     setLoadingLibrary(true);
@@ -47,12 +56,42 @@ export default function AdminImageField({
     setLoadingLibrary(false);
   };
 
-  const updateValue = async (nextValue: string) => {
-    onChange(nextValue);
-    setMessage("");
-    const size = await readImageSize(nextValue);
+  const detectSize = async (nextValue: string) => {
+    const requestId = ++sizeRequestRef.current;
+    if (!isCompleteHttpUrl(nextValue)) {
+      setDetectedSize({ width: 0, height: 0 });
+      return;
+    }
+
+    const size = await readImageSize(nextValue.trim());
+    if (requestId !== sizeRequestRef.current) return;
     setDetectedSize(size);
     if (size.width && size.height) onSize?.(size.width, size.height);
+  };
+
+  const scheduleSizeDetection = (nextValue: string) => {
+    if (sizeTimerRef.current) window.clearTimeout(sizeTimerRef.current);
+
+    if (!isCompleteHttpUrl(nextValue)) {
+      sizeRequestRef.current += 1;
+      setDetectedSize({ width: 0, height: 0 });
+      return;
+    }
+
+    sizeTimerRef.current = window.setTimeout(() => {
+      void detectSize(nextValue);
+    }, 500);
+  };
+
+  const updateValue = (nextValue: string) => {
+    onChange(nextValue);
+    setMessage("");
+    scheduleSizeDetection(nextValue);
+  };
+
+  const handleBlur = (nextValue: string) => {
+    if (sizeTimerRef.current) window.clearTimeout(sizeTimerRef.current);
+    void detectSize(nextValue);
   };
 
   const selectMedia = (item: MediaItem) => {
@@ -67,7 +106,9 @@ export default function AdminImageField({
     if (!value) return;
     setSavingMedia(true);
     setMessage("");
-    const size = detectedSize.width && detectedSize.height ? detectedSize : await readImageSize(value);
+    const size = detectedSize.width && detectedSize.height && isCompleteHttpUrl(value)
+      ? detectedSize
+      : await readImageSize(value);
     const res = await fetch("/api/media", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -103,7 +144,8 @@ export default function AdminImageField({
       <div className="admin-image-input-row">
         <input
           value={value}
-          onChange={(event) => void updateValue(event.target.value)}
+          onChange={(event) => updateValue(event.target.value)}
+          onBlur={(event) => handleBlur(event.target.value)}
           className="admin-input"
           placeholder={placeholder}
           required={required}

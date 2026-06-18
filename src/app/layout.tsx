@@ -20,59 +20,37 @@ const notoSansSc = Noto_Sans_SC({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  try {
-    const settings = await getSettings();
-    const description = (settings.aboutText || "个人摄影作品集").split("\n").filter(Boolean)[0] || "个人摄影作品集";
-    const faviconUrl = settings.faviconUrl || "/favicon.ico";
+  const settings = await getSettings();
+  const description = (settings.aboutText || "个人摄影作品集").split("\n").filter(Boolean)[0] || "个人摄影作品集";
+  const faviconUrl = settings.faviconUrl || "/favicon.ico";
 
-    return {
-      title: {
-        default: settings.siteName,
-        template: `%s | ${settings.siteName}`,
-      },
+  return {
+    title: {
+      default: settings.siteName,
+      template: `%s | ${settings.siteName}`,
+    },
+    description,
+    icons: {
+      icon: [{ url: faviconUrl }],
+      shortcut: [faviconUrl],
+    },
+    openGraph: {
+      title: settings.siteName,
       description,
-      icons: {
-        icon: [{ url: faviconUrl }],
-        shortcut: [faviconUrl],
-      },
-      openGraph: {
-        title: settings.siteName,
-        description,
-        type: "website",
-        images: settings.avatarUrl ? [{ url: settings.avatarUrl, alt: settings.siteName }] : undefined,
-      },
-      twitter: {
-        card: "summary_large_image",
-        title: settings.siteName,
-        description,
-        images: settings.avatarUrl ? [settings.avatarUrl] : undefined,
-      },
-    };
-  } catch {
-    return {
-      title: "摄影作品集",
-      description: "个人摄影作品集",
-      icons: {
-        icon: [{ url: "/favicon.ico" }],
-        shortcut: ["/favicon.ico"],
-      },
-    };
-  }
+      type: "website",
+      images: settings.avatarUrl ? [{ url: settings.avatarUrl, alt: settings.siteName }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: settings.siteName,
+      description,
+      images: settings.avatarUrl ? [settings.avatarUrl] : undefined,
+    },
+  };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  let siteName = "摄影作品集";
-  let copyright = "摄影作品集";
-  let icp = "";
-
-  try {
-    const settings = await getSettings();
-    siteName = settings.siteName;
-    copyright = settings.copyright;
-    icp = settings.icp;
-  } catch {
-    // Settings not available, use defaults.
-  }
+  const settings = await getSettings();
 
   return (
     <html lang="zh-Hans" suppressHydrationWarning>
@@ -82,9 +60,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="theme-color" content="#ffffff" />
       </head>
       <body className={`${jost.variable} ${notoSansSc.variable}`}>
-        <Navbar siteName={siteName} />
+        <Navbar siteName={settings.siteName} />
         <main>{children}</main>
-        <Footer copyright={copyright} icp={icp} />
+        <Footer copyright={settings.copyright} icp={settings.icp} />
       </body>
     </html>
   );

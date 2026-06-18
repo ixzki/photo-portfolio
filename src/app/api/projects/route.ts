@@ -104,9 +104,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "请选择有效的行形式。" }, { status: 400 });
       }
       try {
-        const row = await addRow(projectId, data.layout);
-        if (!row) return NextResponse.json({ error: "Project not found" }, { status: 404 });
-        return NextResponse.json(await getProjectById(projectId));
+        const updated = await addRow(projectId, data.layout);
+        if (!updated) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+        return NextResponse.json(updated);
       } catch (error) {
         return writeErrorResponse(error);
       }
@@ -131,18 +131,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "请选择有效的行形式。" }, { status: 400 });
       }
       try {
-        const row = await updateRow(projectId, data.rowId, data.data);
-        if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
-        return NextResponse.json(await getProjectById(projectId));
+        const updated = await updateRow(projectId, data.rowId, data.data);
+        if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        return NextResponse.json(updated);
       } catch (error) {
         return writeErrorResponse(error);
       }
     }
     if (action === "deleteRow") {
       try {
-        const result = await deleteRow(projectId, data.rowId);
-        if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
-        return NextResponse.json(await getProjectById(projectId));
+        const updated = await deleteRow(projectId, data.rowId);
+        if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        return NextResponse.json(updated);
       } catch (error) {
         return writeErrorResponse(error);
       }
@@ -150,27 +150,43 @@ export async function POST(request: NextRequest) {
     if (action === "addImage") {
       const errors = validateImageInput(data.image);
       if (errors.length) return NextResponse.json({ error: errors[0], errors }, { status: 400 });
-      const img = await addImage(projectId, data.rowId, data.image);
-      if (!img) return NextResponse.json({ error: "Not found" }, { status: 404 });
-      return NextResponse.json(await getProjectById(projectId));
+      try {
+        const updated = await addImage(projectId, data.rowId, data.image);
+        if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        return NextResponse.json(updated);
+      } catch (error) {
+        return writeErrorResponse(error);
+      }
     }
     if (action === "reorderImages") {
       if (!Array.isArray(data.imageIds)) {
         return NextResponse.json({ error: "imageIds array required" }, { status: 400 });
       }
-      const updated = await reorderImages(projectId, data.rowId, data.imageIds);
-      if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
-      return NextResponse.json(updated);
+      try {
+        const updated = await reorderImages(projectId, data.rowId, data.imageIds);
+        if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        return NextResponse.json(updated);
+      } catch (error) {
+        return writeErrorResponse(error);
+      }
     }
     if (action === "updateImage") {
-      const img = await updateImage(projectId, data.rowId, data.imageId, data.data);
-      if (!img) return NextResponse.json({ error: "Not found" }, { status: 404 });
-      return NextResponse.json(await getProjectById(projectId));
+      try {
+        const updated = await updateImage(projectId, data.rowId, data.imageId, data.data);
+        if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        return NextResponse.json(updated);
+      } catch (error) {
+        return writeErrorResponse(error);
+      }
     }
     if (action === "deleteImage") {
-      const result = await deleteImage(projectId, data.rowId, data.imageId);
-      if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
-      return NextResponse.json(await getProjectById(projectId));
+      try {
+        const updated = await deleteImage(projectId, data.rowId, data.imageId);
+        if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        return NextResponse.json(updated);
+      } catch (error) {
+        return writeErrorResponse(error);
+      }
     }
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }

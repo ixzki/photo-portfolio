@@ -67,6 +67,7 @@ export default function DetailImageFrame({ image, alt, delayIndex }: DetailImage
         width={image.width}
         height={image.height}
         sizes="(orientation: portrait) 100vw, 70vw"
+        variant="detail"
       />
     </figure>
   );

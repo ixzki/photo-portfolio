@@ -5,7 +5,7 @@ import DetailImageFrame from "@/components/DetailImageFrame";
 import DetailMotionTrigger from "@/components/DetailMotionTrigger";
 import DetailProjectTitle from "@/components/DetailProjectTitle";
 import ImageLoader from "@/components/ImageLoader";
-import { getProjects, getVisibleProjectBySlug } from "@/lib/db";
+import { getProjectDetailData, getProjects } from "@/lib/db";
 import { Project, Row } from "@/lib/types";
 
 export const revalidate = 300;
@@ -19,7 +19,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: DetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const project = await getVisibleProjectBySlug(slug);
+  const { project } = await getProjectDetailData(slug);
   if (!project) {
     return {
       title: "作品未找到",
@@ -70,14 +70,8 @@ function ProjectInfo({ project, includeTitle = true }: { project: Project; inclu
 
 export default async function DetailPage({ params }: DetailPageProps) {
   const { slug } = await params;
-  const project = await getVisibleProjectBySlug(slug);
+  const { project, nextProject } = await getProjectDetailData(slug);
   if (!project) notFound();
-
-  const allProjects = await getProjects();
-  const currentIndex = allProjects.findIndex((p) => p.slug === slug);
-  const nextProject = allProjects.length > 0
-    ? allProjects[(currentIndex >= 0 ? currentIndex + 1 : 0) % allProjects.length]
-    : null;
 
   return (
     <section className="view detail-page is-active" id="detail" data-view="detail" aria-label="项目详情">
@@ -91,6 +85,7 @@ export default async function DetailPage({ params }: DetailPageProps) {
           width={project.coverW}
           height={project.coverH}
           sizes="100vw"
+          variant="cover"
         />
 
         <DetailProjectTitle title={project.titleZh} />
