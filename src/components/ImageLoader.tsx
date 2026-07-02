@@ -35,7 +35,7 @@ export default function ImageLoader({
   variant = "detail",
   quality,
 }: ImageLoaderProps) {
-  const [loadedSrc, setLoadedSrc] = useState(priority ? src : "");
+  const [loadedSrc, setLoadedSrc] = useState("");
   const [errorSrc, setErrorSrc] = useState("");
   const imgRef = useRef<HTMLImageElement | null>(null);
   const thumb = toTinyPlaceholderUrl(src);
@@ -50,7 +50,6 @@ export default function ImageLoader({
     });
 
   useEffect(() => {
-    if (priority) return;
     const img = imgRef.current;
     if (!img) return;
 
@@ -70,9 +69,9 @@ export default function ImageLoader({
       img.removeEventListener("load", done);
       img.removeEventListener("error", failed);
     };
-  }, [src, priority]);
+  }, [src]);
 
-  const loaded = priority || loadedSrc === src;
+  const loaded = loadedSrc === src;
   const errored = errorSrc === src;
   const finalClass = `${className}${loaded ? " loaded" : ""}${errored ? " image-error" : ""}`;
   const imageStyle = {

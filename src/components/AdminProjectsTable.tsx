@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminPreviewImage from "@/components/AdminPreviewImage";
 import type { FeatureItem, Project } from "@/lib/types";
+
+function reindexProjects(projects: Project[]) {
+  return projects.map((project, order) => ({ ...project, order }));
+}
 
 export default function AdminProjectsTable({
   projects,
@@ -14,16 +18,31 @@ export default function AdminProjectsTable({
 }) {
   const [items, setItems] = useState(projects);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState("");
   const featuredSlugs = new Set(features.filter((item) => item.type === "project").map((item) => item.projectSlug));
 
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [dirty]);
+
   const persistOrder = async (nextItems: Project[]) => {
+    if (!dirty) return;
+    setSaving(true);
     setMessage("排序保存中...");
     const res = await fetch("/api/projects", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "reorderProjects", ids: nextItems.map((item) => item.id) }),
+      body: JSON.stringify({ action: "reorderProjects", ids: reindexProjects(nextItems).map((item) => item.id) }),
     });
+    setSaving(false);
 
     if (!res.ok) {
       setMessage("排序保存失败");
@@ -32,7 +51,8 @@ export default function AdminProjectsTable({
 
     const updated: Project[] = await res.json();
     const orderById = new Map(updated.map((item) => [item.id, item.order]));
-    setItems((current) => current.map((item) => ({ ...item, order: orderById.get(item.id) ?? item.order })));
+    setItems((current) => reindexProjects(current.map((item) => ({ ...item, order: orderById.get(item.id) ?? item.order }))));
+    setDirty(false);
     setMessage("排序已保存");
     window.setTimeout(() => setMessage(""), 1800);
   };
@@ -49,15 +69,22 @@ export default function AdminProjectsTable({
     setItems(current);
   };
 
-  const endDrag = async () => {
+  const endDrag = () => {
     setDraggedId(null);
-    await persistOrder(items);
+    setItems((current) => reindexProjects(current));
+    setDirty(true);
+    setMessage("排序已调整，记得保存");
   };
 
   return (
     <div>
       <div className="admin-actions" style={{ marginBottom: 12 }}>
-        {message && <span className={`admin-message${message.includes("失败") ? " is-error" : ""}`}>{message}</span>}
+        {message
+          ? <span className={`admin-message${message.includes("失败") ? " is-error" : ""}`}>{message}</span>
+          : dirty && <span className="admin-message">有未保存更改</span>}
+        <button type="button" className="admin-btn-sm" disabled={saving || !dirty} onClick={() => void persistOrder(items)}>
+          {saving ? "保存中..." : "保存排序"}
+        </button>
       </div>
       <table className="admin-table">
         <thead>
@@ -91,7 +118,7 @@ export default function AdminProjectsTable({
                     event.dataTransfer.effectAllowed = "move";
                     setDraggedId(project.id);
                   }}
-                  onDragEnd={() => void endDrag()}
+                  onDragEnd={endDrag}
                 >
                   ::
                 </span>{" "}

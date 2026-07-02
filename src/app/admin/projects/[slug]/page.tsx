@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import AdminImageField from "@/components/AdminImageField";
 import AdminProjectRowsEditor from "@/components/AdminProjectRowsEditor";
-import { FeatureItem, Image, LayoutType, Project } from "@/lib/types";
+import { reindexImages, reindexRows, removeRowById } from "@/lib/project-edit-utils.mjs";
+import { FeatureItem, Image, LayoutType, Project, Row } from "@/lib/types";
 
 function isHttpUrl(value: string) {
   try {
@@ -40,6 +41,10 @@ function moveById<T extends { id: string }>(items: T[], draggedId: string, targe
   return next;
 }
 
+function createClientId(prefix: string) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export default function EditProjectPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
@@ -47,16 +52,21 @@ export default function EditProjectPage() {
   const [features, setFeatures] = useState<FeatureItem[]>([]);
   const [newRowLayout, setNewRowLayout] = useState<LayoutType>("landscape");
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState("");
   const [showDimensions, setShowDimensions] = useState(false);
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
   const [draggedImage, setDraggedImage] = useState<{ rowId: string; imageId: string } | null>(null);
+  const [rowIdPendingDelete, setRowIdPendingDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/projects?slug=${params.slug}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data?.id) setProject(data);
+        if (data?.id) {
+          setProject(data);
+          setDirty(false);
+        }
         else setMessage(data?.error || "作品不存在");
       });
     fetch("/api/features").then((res) => res.json()).then((data) => {
@@ -64,35 +74,38 @@ export default function EditProjectPage() {
     });
   }, [params.slug]);
 
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [dirty]);
+
+  useEffect(() => {
+    if (!rowIdPendingDelete) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setRowIdPendingDelete(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [rowIdPendingDelete]);
+
   const isFeatured = useMemo(
     () => Boolean(project && features.some((feature) => feature.type === "project" && feature.projectSlug === project.slug)),
     [features, project],
   );
-  const projectId = project?.id;
-  const projectRows = useMemo(() => project?.rows ?? [], [project?.rows]);
 
   const showMessage = useCallback((nextMessage: string) => {
     setMessage(nextMessage);
     window.setTimeout(() => setMessage(""), 2400);
   }, []);
 
-  const setProjectFromServer = useCallback((updated: Project) => {
-    setProject(updated);
-  }, []);
-
-  const updateRowLayoutInState = useCallback((rowId: string, layout: LayoutType) => {
-    setProject((current) => (
-      current
-        ? {
-            ...current,
-            rows: current.rows.map((row) => (row.id === rowId ? { ...row, layout } : row)),
-          }
-        : current
-    ));
-  }, []);
-
   const updateField = useCallback((field: keyof Project, value: string | number | boolean) => {
     setProject((current) => (current ? { ...current, [field]: value } : current));
+    setDirty(true);
   }, []);
 
   const handleSave = useCallback(async (event?: React.FormEvent) => {
@@ -120,6 +133,7 @@ export default function EditProjectPage() {
 
     const updated: Project = await res.json();
     setProject(updated);
+    setDirty(false);
     showMessage("保存成功");
     if (updated.slug !== params.slug) router.replace(`/admin/projects/${updated.slug}`);
   }, [params.slug, project, router, showMessage]);
@@ -131,89 +145,100 @@ export default function EditProjectPage() {
     if (res.ok) router.push("/admin/projects");
   }, [project, router]);
 
-  const handleAddRow = useCallback(async () => {
-    if (!projectId) return;
-    const res = await fetch("/api/projects", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, action: "addRow", layout: newRowLayout }),
+  const handleAddRow = useCallback(() => {
+    setProject((current) => {
+      if (!current) return current;
+      const row: Row = { id: createClientId("row"), layout: newRowLayout, order: current.rows.length, images: [] };
+      return { ...current, rows: reindexRows([...current.rows, row]) };
     });
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({ error: "请先提供在线数据库链接 DATABASE_URL。" }));
-      showMessage(error.error || "添加行失败");
-      return;
-    }
-    setProjectFromServer(await res.json());
-  }, [newRowLayout, projectId, setProjectFromServer, showMessage]);
+    setDirty(true);
+    showMessage("已添加行，记得保存");
+  }, [newRowLayout, showMessage]);
 
-  const handleDeleteRow = useCallback(async (rowId: string) => {
-    if (!projectId) return;
-    if (!confirm("删除此行？")) return;
-    const res = await fetch("/api/projects", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, action: "deleteRow", rowId }),
+  const handleDeleteRow = useCallback((rowId: string) => {
+    setRowIdPendingDelete(rowId);
+  }, []);
+
+  const closeDeleteRowDialog = useCallback(() => {
+    setRowIdPendingDelete(null);
+  }, []);
+
+  const confirmDeleteRow = useCallback(() => {
+    if (!rowIdPendingDelete) return;
+    setProject((current) => {
+      if (!current) return current;
+      return { ...current, rows: removeRowById(current.rows, rowIdPendingDelete) };
     });
-    if (res.ok) setProjectFromServer(await res.json());
-  }, [projectId, setProjectFromServer]);
+    setDirty(true);
+    setRowIdPendingDelete(null);
+    showMessage("已删除行，记得保存");
+  }, [rowIdPendingDelete, showMessage]);
 
-  const handleUpdateRowLayout = useCallback(async (rowId: string, layout: LayoutType) => {
-    if (!projectId) return;
-    const previousLayout = projectRows.find((row) => row.id === rowId)?.layout;
-    updateRowLayoutInState(rowId, layout);
-
-    const res = await fetch("/api/projects", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, action: "updateRow", rowId, data: { layout } }),
-    });
-
-    if (!res.ok) {
-      if (previousLayout) updateRowLayoutInState(rowId, previousLayout);
-      const error = await res.json().catch(() => ({ error: "行形式保存失败" }));
-      showMessage(error.error || "行形式保存失败");
-      return;
-    }
-
-    setProjectFromServer(await res.json());
-    showMessage("行形式已保存");
-  }, [projectId, projectRows, setProjectFromServer, showMessage, updateRowLayoutInState]);
+  const handleUpdateRowLayout = useCallback((rowId: string, layout: LayoutType) => {
+    setProject((current) => (
+      current
+        ? {
+            ...current,
+            rows: current.rows.map((row) => (row.id === rowId ? { ...row, layout } : row)),
+          }
+        : current
+    ));
+    setDirty(true);
+  }, []);
 
   const handleAddImage = useCallback(async (rowId: string, image: Omit<Image, "id" | "order">) => {
-    if (!projectId) return;
-    const res = await fetch("/api/projects", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, action: "addImage", rowId, image }),
-    });
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({ error: "添加失败" }));
-      showMessage(error.error || "添加失败");
+    if (!isHttpUrl(image.url) || Number(image.width) <= 0 || Number(image.height) <= 0) {
+      showMessage("请填写有效的图片信息");
       return;
     }
-    setProjectFromServer(await res.json());
-  }, [projectId, setProjectFromServer, showMessage]);
-
-  const handleUpdateImage = useCallback(async (rowId: string, imageId: string, data: Partial<Image>) => {
-    if (!projectId) return;
-    const res = await fetch("/api/projects", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, action: "updateImage", rowId, imageId, data }),
+    setProject((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        rows: current.rows.map((row) => {
+          if (row.id !== rowId) return row;
+          const nextImage: Image = { ...image, id: createClientId("image"), order: row.images.length };
+          return { ...row, images: reindexImages([...row.images, nextImage]) };
+        }),
+      };
     });
-    if (res.ok) setProjectFromServer(await res.json());
-  }, [projectId, setProjectFromServer]);
+    setDirty(true);
+  }, [showMessage]);
 
-  const handleDeleteImage = useCallback(async (rowId: string, imageId: string) => {
-    if (!projectId) return;
+  const handleUpdateImage = useCallback((rowId: string, imageId: string, data: Partial<Image>) => {
+    setProject((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        rows: current.rows.map((row) => (
+          row.id === rowId
+            ? {
+                ...row,
+                images: row.images.map((image) => (image.id === imageId ? { ...image, ...data } : image)),
+              }
+            : row
+        )),
+      };
+    });
+    setDirty(true);
+  }, []);
+
+  const handleDeleteImage = useCallback((rowId: string, imageId: string) => {
+    if (!project) return;
     if (!confirm("删除此图片？")) return;
-    const res = await fetch("/api/projects", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, action: "deleteImage", rowId, imageId }),
+    setProject((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        rows: current.rows.map((row) => (
+          row.id === rowId
+            ? { ...row, images: reindexImages(row.images.filter((image) => image.id !== imageId)) }
+            : row
+        )),
+      };
     });
-    if (res.ok) setProjectFromServer(await res.json());
-  }, [projectId, setProjectFromServer]);
+    setDirty(true);
+  }, [project]);
 
   const moveRowBefore = useCallback((targetRowId: string) => {
     if (!draggedRowId) return;
@@ -221,19 +246,13 @@ export default function EditProjectPage() {
       if (!current) return current;
       return { ...current, rows: moveById(current.rows, draggedRowId, targetRowId) };
     });
+    setDirty(true);
   }, [draggedRowId]);
 
-  const persistRowOrder = useCallback(async () => {
-    if (!projectId) return;
+  const persistRowOrder = useCallback(() => {
     setDraggedRowId(null);
-    const rowIds = projectRows.map((row) => row.id);
-    const res = await fetch("/api/projects", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, action: "reorderRows", rowIds }),
-    });
-    if (res.ok) setProjectFromServer(await res.json());
-  }, [projectId, projectRows, setProjectFromServer]);
+    setProject((current) => (current ? { ...current, rows: reindexRows(current.rows) } : current));
+  }, []);
 
   const moveImageBefore = useCallback((rowId: string, targetImageId: string) => {
     if (!draggedImage || draggedImage.rowId !== rowId) return;
@@ -246,21 +265,21 @@ export default function EditProjectPage() {
         )),
       };
     });
+    setDirty(true);
   }, [draggedImage]);
 
-  const persistImageOrder = useCallback(async (rowId: string) => {
-    if (!projectId) return;
+  const persistImageOrder = useCallback((rowId: string) => {
     setDraggedImage(null);
-    const row = projectRows.find((item) => item.id === rowId);
-    if (!row) return;
-    const imageIds = row.images.map((image) => image.id);
-    const res = await fetch("/api/projects", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, action: "reorderImages", rowId, imageIds }),
+    setProject((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        rows: current.rows.map((row) => (
+          row.id === rowId ? { ...row, images: reindexImages(row.images) } : row
+        )),
+      };
     });
-    if (res.ok) setProjectFromServer(await res.json());
-  }, [projectId, projectRows, setProjectFromServer]);
+  }, []);
 
   const handleNewRowLayoutChange = useCallback((layout: LayoutType) => {
     setNewRowLayout(layout);
@@ -275,10 +294,17 @@ export default function EditProjectPage() {
   }, []);
 
   const handleUpdateImageAlt = useCallback((rowId: string, imageId: string, alt: string) => {
-    void handleUpdateImage(rowId, imageId, { alt: alt || null });
+    handleUpdateImage(rowId, imageId, { alt: alt || null });
   }, [handleUpdateImage]);
 
   if (!project) return <p>加载中...</p>;
+
+  const rowPendingDelete = rowIdPendingDelete
+    ? project.rows.find((row) => row.id === rowIdPendingDelete)
+    : null;
+  const rowPendingDeleteIndex = rowPendingDelete
+    ? project.rows.findIndex((row) => row.id === rowPendingDelete.id)
+    : -1;
 
   return (
     <div>
@@ -290,11 +316,12 @@ export default function EditProjectPage() {
               {project.visible ? "已发布" : "草稿"}
             </span>
             {isFeatured && <span className="admin-status-badge is-featured">首页精选中</span>}
+            {dirty && <span className="admin-status-badge is-featured">有未保存更改</span>}
           </div>
         </div>
         <div className="admin-actions">
           {project.visible && <Link href={`/works/${project.slug}`} className="admin-btn-sm">预览</Link>}
-          <button onClick={() => handleSave()} disabled={saving} className="admin-btn">
+          <button onClick={() => handleSave()} disabled={saving || !dirty} className="admin-btn">
             {saving ? "保存中..." : "保存"}
           </button>
           <button onClick={handleDelete} className="admin-btn-sm admin-btn-danger">删除作品</button>
@@ -427,12 +454,33 @@ export default function EditProjectPage() {
         />
 
         <div className="admin-actions admin-form-actions">
-          <button type="submit" disabled={saving} className="admin-btn">
+          <button type="submit" disabled={saving || !dirty} className="admin-btn">
             {saving ? "保存中..." : "保存"}
           </button>
           <button type="button" onClick={handleDelete} className="admin-btn-sm admin-btn-danger">删除作品</button>
         </div>
       </form>
+
+      {rowPendingDelete && (
+        <div className="admin-dialog-backdrop" role="presentation" onMouseDown={closeDeleteRowDialog}>
+          <div
+            className="admin-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-row-dialog-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <h2 id="delete-row-dialog-title">删除图片行</h2>
+            <p>
+              确定删除行 #{rowPendingDeleteIndex}？这一行里的 {rowPendingDelete.images.length} 张图片会从当前作品草稿中移除。
+            </p>
+            <div className="admin-dialog-actions">
+              <button type="button" className="admin-btn-sm" onClick={closeDeleteRowDialog}>取消</button>
+              <button type="button" className="admin-btn-sm admin-btn-danger" onClick={confirmDeleteRow}>删除行</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

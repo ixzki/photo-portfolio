@@ -14,7 +14,22 @@ interface ProjectOption {
   visible: boolean;
 }
 
-type FeatureCreatePayload = Omit<FeatureItem, "id">;
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function createClientId(prefix: string) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function reindexFeatures(items: FeatureItem[]) {
+  return items.map((item, order) => ({ ...item, order }));
+}
 
 export default function AdminFeaturesPage() {
   const [features, setFeatures] = useState<FeatureItem[]>([]);
@@ -22,6 +37,8 @@ export default function AdminFeaturesPage() {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [addType, setAddType] = useState<"project" | "image">("project");
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState("");
   const [newFeature, setNewFeature] = useState({
     projectSlug: "",
@@ -33,23 +50,31 @@ export default function AdminFeaturesPage() {
 
   const projectBySlug = useMemo(() => new Map(projects.map((project) => [project.slug, project])), [projects]);
 
-  const loadFeatures = async () => {
-    const res = await fetch("/api/features");
-    if (res.ok) setFeatures(await res.json());
-  };
-
   useEffect(() => {
     let active = true;
     fetch("/api/projects").then((r) => r.json()).then((data) => {
       if (active && Array.isArray(data)) setProjects(data);
     });
     fetch("/api/features").then((r) => r.json()).then((data) => {
-      if (active && Array.isArray(data)) setFeatures(data);
+      if (active && Array.isArray(data)) {
+        setFeatures(data);
+        setDirty(false);
+      }
     });
     return () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [dirty]);
 
   const showTransientMessage = (nextMessage: string) => {
     setMessage(nextMessage);
@@ -59,54 +84,74 @@ export default function AdminFeaturesPage() {
   const handleAdd = async (event: React.FormEvent) => {
     event.preventDefault();
     setMessage("");
-    const body: FeatureCreatePayload = { type: addType, order: features.length };
+    let feature: FeatureItem;
+
     if (addType === "project") {
-      body.projectSlug = newFeature.projectSlug;
-      body.projectTitle = newFeature.projectTitle;
-      body.projectCoverUrl = newFeature.projectCoverUrl;
+      const project = projectBySlug.get(newFeature.projectSlug);
+      if (!project) {
+        setMessage("请选择关联项目。");
+        return;
+      }
+      feature = {
+        id: createClientId("feature"),
+        type: "project",
+        projectSlug: project.slug,
+        projectTitle: project.titleZh,
+        projectCoverUrl: project.featureUrl || project.coverUrl,
+        order: features.length,
+      };
     } else {
-      body.imageUrl = newFeature.imageUrl;
-      body.imageTitle = newFeature.imageTitle;
+      if (!isHttpUrl(newFeature.imageUrl)) {
+        setMessage("请填写有效的图片 URL。");
+        return;
+      }
+      if (!newFeature.imageTitle.trim()) {
+        setMessage("请填写显示标题。");
+        return;
+      }
+      feature = {
+        id: createClientId("feature"),
+        type: "image",
+        imageUrl: newFeature.imageUrl,
+        imageTitle: newFeature.imageTitle,
+        order: features.length,
+      };
     }
 
+    setFeatures((current) => reindexFeatures([...current, feature]));
+    setDirty(true);
+    setShowAdd(false);
+    setNewFeature({ projectSlug: "", projectTitle: "", projectCoverUrl: "", imageUrl: "", imageTitle: "" });
+    showTransientMessage("已添加精选，记得保存");
+  };
+
+  const handleDelete = (id: string) => {
+    if (!confirm("确定删除此项？")) return;
+    setFeatures((current) => reindexFeatures(current.filter((feature) => feature.id !== id)));
+    setDirty(true);
+    showTransientMessage("已删除精选，记得保存");
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const nextFeatures = reindexFeatures(features);
     const res = await fetch("/api/features", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ action: "replace", features: nextFeatures }),
     });
+    setSaving(false);
 
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ error: "添加失败" }));
-      setMessage(error.error || "添加失败");
+      const error = await res.json().catch(() => ({ error: "保存失败" }));
+      showTransientMessage(error.error || "保存失败");
       return;
     }
 
-    await loadFeatures();
-    setShowAdd(false);
-    setNewFeature({ projectSlug: "", projectTitle: "", projectCoverUrl: "", imageUrl: "", imageTitle: "" });
-    showTransientMessage("已添加精选");
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("确定删除此项？")) return;
-    await fetch(`/api/features?id=${id}`, { method: "DELETE" });
-    await loadFeatures();
-  };
-
-  const persistOrder = async (nextFeatures: FeatureItem[]) => {
-    const res = await fetch("/api/features/reorder", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: nextFeatures.map((feature) => feature.id) }),
-    });
-
-    if (!res.ok) {
-      showTransientMessage("排序保存失败");
-      return;
-    }
-
-    await loadFeatures();
-    showTransientMessage("排序已保存");
+    const updated: FeatureItem[] = await res.json();
+    setFeatures(updated);
+    setDirty(false);
+    showTransientMessage("精选已保存");
   };
 
   const moveDraggedBefore = (targetId: string) => {
@@ -120,13 +165,23 @@ export default function AdminFeaturesPage() {
     setFeatures(current);
   };
 
-  const finishDrag = async () => {
+  const finishDrag = () => {
     setDraggedId(null);
-    await persistOrder(features);
+    setFeatures((current) => reindexFeatures(current));
+    setDirty(true);
   };
 
   const handleProjectSelect = (slug: string) => {
     const project = projects.find((item) => item.slug === slug);
+    if (!slug) {
+      setNewFeature((prev) => ({
+        ...prev,
+        projectSlug: "",
+        projectTitle: "",
+        projectCoverUrl: "",
+      }));
+      return;
+    }
     if (!project) return;
     setNewFeature((prev) => ({
       ...prev,
@@ -141,8 +196,13 @@ export default function AdminFeaturesPage() {
       <div className="admin-page-header">
         <h1 className="admin-heading" style={{ margin: 0 }}>首页精选</h1>
         <div className="admin-actions">
-          {message && <span className={`admin-message${message.includes("失败") ? " is-error" : ""}`}>{message}</span>}
-          <button onClick={() => setShowAdd(!showAdd)} className="admin-btn">
+          {message
+            ? <span className={`admin-message${message.includes("失败") || message.includes("请") ? " is-error" : ""}`}>{message}</span>
+            : dirty && <span className="admin-message">有未保存更改</span>}
+          <button type="button" onClick={handleSave} disabled={saving || !dirty} className="admin-btn">
+            {saving ? "保存中..." : "保存精选"}
+          </button>
+          <button type="button" onClick={() => setShowAdd(!showAdd)} className="admin-btn">
             {showAdd ? "取消" : "+ 添加精选"}
           </button>
         </div>
@@ -239,7 +299,7 @@ export default function AdminFeaturesPage() {
                   event.dataTransfer.effectAllowed = "move";
                   setDraggedId(item.id);
                 }}
-                onDragEnd={() => void finishDrag()}
+                onDragEnd={finishDrag}
               >
                 ::
               </span>

@@ -1,12 +1,14 @@
 import { neon } from "@neondatabase/serverless";
 import { cache } from "react";
 import { seedFeatures, seedProjects, seedSettings } from "./data";
+import { isRetryableReadQuery, withDatabaseRetry } from "./db-retry-utils.mjs";
 import { hasManualProjectOrder, sortProjectsForDisplay } from "./project-order-utils.mjs";
 import { FeatureItem, Image, LayoutType, MediaItem, Project, Row, SiteSettings } from "./types";
 
 type SqlClient = ReturnType<typeof neon>;
 type ProjectCreateInput = Omit<Project, "id" | "rows"> & { rows?: Omit<Row, "id" | "images">[] };
 let sqlClient: SqlClient | null = null;
+let retryingSqlClient: SqlClient | null = null;
 let schemaReady: Promise<void> | null = null;
 
 function databaseUrl() {
@@ -17,6 +19,20 @@ function getSql() {
   if (!databaseUrl()) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
   if (!sqlClient) sqlClient = neon(databaseUrl());
   return sqlClient;
+}
+
+function getRetryingSql() {
+  const sql = getSql();
+  if (!retryingSqlClient) {
+    retryingSqlClient = (async (...args: Parameters<SqlClient>) => {
+      const [query] = args;
+      if (isRetryableReadQuery(query)) {
+        return withDatabaseRetry(() => sql(...args));
+      }
+      return sql(...args);
+    }) as SqlClient;
+  }
+  return retryingSqlClient;
 }
 
 function generateId(): string {
@@ -166,7 +182,7 @@ export async function setupDatabaseSchema() {
 }
 
 async function db() {
-  return getSql();
+  return getRetryingSql();
 }
 
 async function updateProjectData(
@@ -520,6 +536,25 @@ export async function addFeature(input: Omit<FeatureItem, "id">): Promise<Featur
     [feature.id, feature.order, JSON.stringify(feature)],
   );
   return feature;
+}
+
+export async function replaceFeatures(input: FeatureItem[]): Promise<FeatureItem[]> {
+  const features = input.map((feature, order) => normalizeFeature({
+    ...feature,
+    id: feature.id || generateId(),
+    order,
+  }));
+  const sql = await db();
+
+  await sql("DELETE FROM portfolio_features");
+  for (const feature of features) {
+    await sql(
+      "INSERT INTO portfolio_features (id, order_index, data) VALUES ($1, $2, $3::jsonb)",
+      [feature.id, feature.order, JSON.stringify(feature)],
+    );
+  }
+
+  return readFeatures(false);
 }
 
 export async function updateFeature(id: string, data: Partial<FeatureItem>): Promise<FeatureItem | null> {

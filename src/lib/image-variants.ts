@@ -74,5 +74,5 @@ export function toResponsiveImageUrl(
 
 export function toTinyPlaceholderUrl(src: string): string {
   if (!isUpyunImageUrl(src) && !src.includes("unsplash.com")) return "";
-  return toResponsiveImageUrl(src, { width: 48, quality: 24, variant: "thumb" });
+  return toResponsiveImageUrl(src, { width: 96, quality: 34, variant: "thumb" });
 }
