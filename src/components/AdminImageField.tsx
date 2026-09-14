@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import AdminPreviewImage from "@/components/AdminPreviewImage";
 import { isCompleteHttpUrl } from "@/lib/admin-image-utils.mjs";
 import type { MediaItem } from "@/lib/types";
@@ -34,6 +34,7 @@ export default function AdminImageField({
   placeholder = "https://...",
   required,
 }: AdminImageFieldProps) {
+  const inputId = useId();
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [showLibrary, setShowLibrary] = useState(false);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
@@ -42,21 +43,32 @@ export default function AdminImageField({
   const [detectedSize, setDetectedSize] = useState({ width: 0, height: 0 });
   const sizeTimerRef = useRef<number | null>(null);
   const sizeRequestRef = useRef(0);
+  const latestValue = useRef(value);
+
+  useEffect(() => { latestValue.current = value; sizeRequestRef.current += 1; }, [value]);
 
   useEffect(() => {
     return () => {
       if (sizeTimerRef.current) window.clearTimeout(sizeTimerRef.current);
+      sizeRequestRef.current += 1;
     };
   }, []);
 
   const loadMedia = async () => {
     setLoadingLibrary(true);
-    const res = await fetch("/api/media");
-    if (res.ok) setMedia(await res.json());
-    setLoadingLibrary(false);
+    setMessage("");
+    try {
+      const res = await fetch("/api/media");
+      if (!res.ok) throw new Error();
+      const items = await res.json();
+      if (!Array.isArray(items)) throw new Error();
+      setMedia(items);
+    } catch { setMessage("媒体库加载失败，请再次点击媒体库重试。"); }
+    finally { setLoadingLibrary(false); }
   };
 
   const detectSize = async (nextValue: string) => {
+    if (nextValue !== latestValue.current) return;
     const requestId = ++sizeRequestRef.current;
     if (!isCompleteHttpUrl(nextValue)) {
       setDetectedSize({ width: 0, height: 0 });
@@ -84,8 +96,10 @@ export default function AdminImageField({
   };
 
   const updateValue = (nextValue: string) => {
+    latestValue.current = nextValue;
     onChange(nextValue);
     setMessage("");
+    setDetectedSize({ width: 0, height: 0 });
     scheduleSizeDetection(nextValue);
   };
 
@@ -95,6 +109,8 @@ export default function AdminImageField({
   };
 
   const selectMedia = (item: MediaItem) => {
+    latestValue.current = item.url;
+    sizeRequestRef.current += 1;
     onChange(item.url);
     onSize?.(item.width, item.height);
     onAlt?.(item.alt || item.title || "");
@@ -103,33 +119,35 @@ export default function AdminImageField({
   };
 
   const saveCurrentToLibrary = async () => {
-    if (!value) return;
+    if (!isCompleteHttpUrl(value)) return;
     setSavingMedia(true);
     setMessage("");
-    const size = detectedSize.width && detectedSize.height && isCompleteHttpUrl(value)
-      ? detectedSize
-      : await readImageSize(value);
-    const res = await fetch("/api/media", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: value,
-        title: label || "",
-        alt: label || "",
-        width: size.width || 1440,
-        height: size.height || 960,
-      }),
-    });
-    setSavingMedia(false);
+    try {
+      const size = detectedSize.width && detectedSize.height
+        ? detectedSize
+        : await readImageSize(value);
+      const res = await fetch("/api/media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: value,
+          title: label || "",
+          alt: label || "",
+          width: size.width || 1440,
+          height: size.height || 960,
+        }),
+      });
 
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({ error: "保存失败" }));
-      setMessage(error.error || "保存失败");
-      return;
-    }
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: "保存失败" }));
+        setMessage(error.error || "保存失败");
+        return;
+      }
 
-    setMessage("已保存到媒体库");
-    if (showLibrary) await loadMedia();
+      if (showLibrary) await loadMedia();
+      setMessage("已保存到媒体库");
+    } catch { setMessage("存入媒体库失败，请检查网络后重试。"); }
+    finally { setSavingMedia(false); }
   };
 
   const toggleLibrary = async () => {
@@ -140,9 +158,11 @@ export default function AdminImageField({
 
   return (
     <div className="admin-image-field">
-      {label && <label>{label}</label>}
+      {label && <label htmlFor={inputId}>{label}</label>}
       <div className="admin-image-input-row">
         <input
+          id={inputId}
+          aria-label={label || "图片链接"}
           value={value}
           onChange={(event) => updateValue(event.target.value)}
           onBlur={(event) => handleBlur(event.target.value)}
@@ -153,12 +173,12 @@ export default function AdminImageField({
         <button type="button" className="admin-btn-sm" onClick={() => void toggleLibrary()}>
           媒体库
         </button>
-        <button type="button" className="admin-btn-sm" disabled={!value || savingMedia} onClick={saveCurrentToLibrary}>
+        <button type="button" className="admin-btn-sm" disabled={!isCompleteHttpUrl(value) || savingMedia} onClick={saveCurrentToLibrary}>
           {savingMedia ? "保存中..." : "存入库"}
         </button>
       </div>
       {message && <p className={`admin-field-message${message.includes("失败") ? " is-error" : ""}`}>{message}</p>}
-      {value && (
+      {isCompleteHttpUrl(value) && (
         <div className="admin-image-preview">
           <AdminPreviewImage src={value} alt="" width={160} height={106} sizes="160px" />
           {detectedSize.width > 0 && (

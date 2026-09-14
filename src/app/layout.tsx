@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Jost, Noto_Sans_SC } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { getSettings } from "@/lib/db";
+import { getShellSettings } from "@/lib/db";
+import { isDemoPreview, isReadOnlyPreview } from "@/lib/preview-config.mjs";
 import "./globals.css";
 
 const jost = Jost({
@@ -20,7 +21,7 @@ const notoSansSc = Noto_Sans_SC({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSettings();
+  const settings = await getShellSettings();
   const description = (settings.aboutText || "个人摄影作品集").split("\n").filter(Boolean)[0] || "个人摄影作品集";
   const faviconUrl = settings.faviconUrl || "/favicon.ico";
 
@@ -30,6 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s | ${settings.siteName}`,
     },
     description,
+    ...(isReadOnlyPreview() || (!process.env.VERCEL && process.env.LOCAL_PREVIEW_LABEL) ? { robots: { index: false, follow: false } } : {}),
     icons: {
       icon: [{ url: faviconUrl }],
       shortcut: [faviconUrl],
@@ -50,7 +52,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = await getSettings();
+  const settings = await getShellSettings();
+  const previewLabel = !process.env.VERCEL ? process.env.LOCAL_PREVIEW_LABEL : undefined;
 
   return (
     <html lang="zh-Hans" suppressHydrationWarning>
@@ -60,6 +63,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="theme-color" content="#ffffff" />
       </head>
       <body className={`${jost.variable} ${notoSansSc.variable}`}>
+        {(isReadOnlyPreview() || previewLabel) && (
+          <div role="status" style={{ position: "fixed", bottom: 12, left: 12, zIndex: 9999, maxWidth: "calc(100vw - 24px)", padding: "8px 12px", background: "#172019", color: "#fff", fontSize: 12, borderRadius: 6 }}>
+            {isDemoPreview() ? "本地示例预览 · 非线上作品 · 只读" : isReadOnlyPreview() ? "只读预览 · 修改与删除已禁用" : previewLabel}
+          </div>
+        )}
         <Navbar siteName={settings.siteName} />
         <main>{children}</main>
         <Footer copyright={settings.copyright} icp={settings.icp} />

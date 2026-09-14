@@ -1,0 +1,15 @@
+.page { min-width: 0; color: #111; }
+.tableWrap { max-width: 100%; overflow-x: auto; }
+.page :global(.admin-heading) { color: #111; }
+.page :global(.admin-btn), .page :global(.admin-btn-sm), .page :global(.admin-status-badge) { border-radius: 0; }
+.page :global(.admin-status-badge.is-live) { background: #111; color: #fff; }
+.page :global(.admin-status-badge.is-draft) { background: #eee; color: #555; }
+:global(.admin-main):has(.page) { min-width: 0; }
+@media (max-width: 700px) {
+  :global(.admin-container):has(.page) { flex-direction: column; }
+  :global(.admin-container):has(.page) > :global(.admin-sidebar) { width: 100%; padding: 12px 16px; border-right: 0; border-bottom: 1px solid #ddd; }
+  :global(.admin-container):has(.page) :global(.admin-nav) { flex-direction: row; flex-wrap: wrap; margin-top: 8px; gap: 0; }
+  :global(.admin-container):has(.page) :global(.admin-nav-item) { padding: 6px 8px; width: auto; }
+  :global(.admin-main):has(.page) { padding: 20px 16px; }
+  .page :global(.admin-table) { min-width: 600px; }
+}

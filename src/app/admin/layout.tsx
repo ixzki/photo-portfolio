@@ -18,6 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin" className="admin-nav-item">总览</Link>
           <Link href="/admin/features" className="admin-nav-item">首页精选</Link>
           <Link href="/admin/projects" className="admin-nav-item">作品管理</Link>
+          <Link href="/admin/travel" className="admin-nav-item">旅行管理</Link>
           <Link href="/admin/media" className="admin-nav-item">媒体库</Link>
           <Link href="/admin/settings" className="admin-nav-item">站点设置</Link>
           <AdminLogoutButton />

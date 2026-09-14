@@ -1,0 +1,67 @@
+.editor { color: #111; font-size: 14px; line-height: 1.6; min-width: 0; padding-bottom: 20px; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+.header > a { padding: 8px 0; }
+.status { display: flex; flex-wrap: wrap; gap: 16px; color: #666; margin: 7px 0 20px; font-size: 12px; }
+.sectionNav { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid #000; padding-bottom: 15px; }
+.editor label { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.editor input, .editor select, .editor textarea { border-radius: 0; }
+.editor button, .saveActions a { border: 1px solid #bbb; padding: 7px 11px; background: #fff; color: #111; font: inherit; cursor: pointer; border-radius: 0; line-height: 1.4; }
+.editor button:hover:not(:disabled), .saveActions a:hover { background: #000; color: #fff; border-color: #000; }
+.editor button:focus-visible, .editor a:focus-visible, .editor summary:focus-visible { outline: 2px solid #000; outline-offset: 3px; }
+.editor button:disabled { opacity: .4; cursor: default; }
+.fields { margin: 0; padding: 0; border: 0; min-width: 0; }
+.panel { border-bottom: 1px solid #ddd; padding: 20px 0; scroll-margin-top: calc(var(--nav-h) + 18px); }
+.editor h2 { font-size: 18px; font-weight: 500; margin: 0 0 16px; }
+.panel > summary { font-size: 16px; cursor: pointer; }
+.panel > summary span { font-size: 12px; margin-left: 16px; color: #777; }
+.panel[open] > summary { margin-bottom: 20px; }
+.infoFields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 18px; }
+.titleField { grid-column: span 2; }
+.infoFields > label:last-child { grid-column: span 3; }
+.covers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.coverCard { min-width: 0; }
+.coverCard h3 { font-size: 15px; font-weight: 500; margin: 0 0 4px; }
+.coverCard p, .dimensions p { font-size: 12px; color: #666; margin: 0 0 14px; }
+.coverCard > button { margin-top: 12px; }
+.coverCard > a { margin-left: 12px; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.coverCard :global(.admin-image-input-row) { flex-wrap: wrap; }
+.coverCard :global(.admin-image-input-row) input { flex: 1 0 100%; }
+.coverCard :global(.admin-image-preview) { display: block; }
+.coverCard :global(.admin-image-preview) img { width: 100%; height: 150px; object-fit: cover; }
+.coverCard :global(.admin-image-size) { display: block; font-size: 11px; margin-top: 4px; }
+.dimensions { margin-top: 18px; font-size: 12px; }
+.dimensions summary { cursor: pointer; margin-bottom: 10px; }
+.dimensionGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.rowsPanel { padding: 26px 0; scroll-margin-top: calc(var(--nav-h) + 18px); }
+.moreFields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px; max-width: 750px; margin-bottom: 20px; }
+.hint { font-size: 12px; color: #666; overflow-wrap: anywhere; }
+.saveBar { position: sticky; bottom: 0; z-index: 700; background: #fff; border-top: 1px solid #000; display: flex; align-items: center; gap: 16px; padding: 16px 0; margin-top: 24px; }
+.saveState { font-size: 12px; color: #666; }
+.editor .publish { display: flex; flex-direction: row; align-items: center; gap: 7px; white-space: nowrap; }
+.publish input { accent-color: #000; }
+.saveActions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; align-items: center; }
+.editor .primary { color: #fff; background: #000; border-color: #000; }
+.message, .notice { padding: 12px; border: 1px solid #aaa; background: #f3f3f3; overflow-wrap: anywhere; }
+.message { position: sticky; bottom: 72px; z-index: 701; margin: 0 0 12px; }
+.message[data-error="true"] { border-color: #000; border-left-width: 4px; }
+:global(.admin-main):has(.editor) { min-width: 0; overflow: visible; }
+:global(body):has(.editor) > :global(.footer) { display: none; }
+@media (max-width: 1150px) { .covers { grid-template-columns: minmax(0, 1fr); } .coverCard { border-bottom: 1px solid #ddd; padding-bottom: 16px; } .coverCard :global(.admin-image-preview) img { max-width: 420px; height: auto; max-height: 220px; } }
+@media (max-width: 700px) {
+  :global(.admin-container):has(.editor) { flex-direction: column; }
+  :global(.admin-container):has(.editor) > :global(.admin-sidebar) { width: 100%; padding: 12px 16px; border-right: 0; border-bottom: 1px solid #ddd; }
+  :global(.admin-container):has(.editor) :global(.admin-nav) { flex-direction: row; flex-wrap: wrap; margin-top: 8px; gap: 0; }
+  :global(.admin-container):has(.editor) :global(.admin-nav-item) { padding: 6px 8px; width: auto; }
+  :global(.admin-main):has(.editor) { padding: 20px 16px; }
+  .infoFields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .infoFields > label:last-child { grid-column: span 2; }
+  .dimensionGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .moreFields { grid-template-columns: minmax(0, 1fr); }
+  .panel > summary span { display: block; margin-left: 16px; margin-top: 4px; }
+  .saveBar { flex-wrap: wrap; gap: 8px; }
+  .saveActions { width: 100%; margin-left: 0; }
+  .saveActions .primary { margin-left: auto; }
+  .saveActions a { font-size: 12px; }
+  .message { bottom: 113px; }
+}

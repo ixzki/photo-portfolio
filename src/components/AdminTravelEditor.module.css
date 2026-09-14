@@ -1,0 +1,79 @@
+.editor { color: #111; font-size: 14px; line-height: 1.6; min-width: 0; }
+.header { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.header :global(.admin-heading) { color: #111; }
+.fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.editor label { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.editor input, .editor textarea, .editor select { border-radius: 0; }
+.editor button, .saveActions a { border: 1px solid #bbb; padding: 7px 11px; background: #fff; color: #111; font: inherit; cursor: pointer; border-radius: 0; line-height: 1.4; }
+.editor button:hover, .editor button[aria-pressed="true"], .saveActions a:hover { background: #000; color: #fff; border-color: #000; }
+.editor button:focus-visible, .editor a:focus-visible { outline: 2px solid #000; outline-offset: 3px; }
+.editor button:disabled { opacity: .4; cursor: default; }
+.settings { display: grid; grid-template-columns: 1.2fr 1fr 140px; gap: 16px; }
+.details { border-bottom: 1px solid #ddd; padding: 14px 0; }
+.details summary { cursor: pointer; width: fit-content; }
+.details[open] summary { margin-bottom: 14px; }
+.coverFields { max-width: 680px; display: grid; gap: 14px; }
+.importFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.fileField input { min-width: 0; max-width: 100%; }
+.hint { font-size: 12px; line-height: 1.65; color: #666; margin: 10px 0; overflow-wrap: anywhere; }
+.toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.workspace { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, 1fr); gap: 28px; align-items: start; margin-top: 28px; }
+.mapColumn, .contentColumn { min-width: 0; }
+.mapWrap { position: relative; }
+.map, .mapLoading { width: 100%; height: clamp(340px, 43vw, 520px); background: #f1f1f1; z-index: 0; font-family: inherit; }
+.mapLoading { display: grid; place-items: center; }
+.map[data-mode="point"], .map[data-mode="range"], .map[data-mode="draw"], .map[data-mode="move"], .map[data-mode="start"], .map[data-mode="end"] { cursor: crosshair; }
+.tiles { filter: grayscale(1) contrast(.6) brightness(1.2); }
+.map :global(img.leaflet-tile) { opacity: 1; filter: none; transition: none; background: transparent; }
+.map :global(.leaflet-control-zoom) { border: 1px solid #bbb; border-radius: 0; box-shadow: none; }
+.map :global(.leaflet-control-zoom a) { border-radius: 0; color: #000; }
+.map :global(.leaflet-control-attribution) { font-family: inherit; font-size: 9px; }
+.editor .fitButton { position: absolute; top: 10px; left: 10px; z-index: 500; font-size: 12px; }
+.map .pin { display: grid; place-items: center; background: #fff; border: 1px solid #000; border-radius: 50%; color: #000; font-size: 12px; line-height: 1; }
+.map .pinActive { color: #fff; background: #000; box-shadow: 0 0 0 3px #fff; }
+.mapNotice { position: absolute; bottom: 20px; left: 8px; background: #fff; font-size: 11px; padding: 2px 5px; z-index: 500; }
+.routeParts { display: grid; gap: 4px; max-height: 260px; overflow-y: auto; }
+.routeParts > div { display: flex; justify-content: space-between; align-items: center; }
+.stopList { list-style: none; margin: 18px 0 0; padding: 0; }
+.stopList li + li { border-top: 1px solid #ddd; }
+.stopList button { display: flex; gap: 12px; text-align: left; align-items: baseline; width: 100%; border: 0; padding: 11px 8px; }
+.number { font-variant-numeric: tabular-nums; }
+.kind { margin-left: auto; white-space: nowrap; opacity: .7; font-size: 11px; }
+.sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 16px; }
+.sectionHeader h2 { font-size: 18px; font-weight: 500; margin: 0; }
+.anchorFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 15px 0 10px; }
+.markdownLabel { margin-top: 12px; }
+.markdownLabel > span { font-size: 12px; color: #666; }
+.markdownInput { display: block; width: 100%; min-height: 360px; padding: 14px; font-family: inherit; font-size: 14px; line-height: 1.9; resize: vertical; border: 1px solid #bbb; color: #111; background: #fff; user-select: text; }
+.markdownPreview { margin-top: 12px; min-height: 360px; padding: 14px; border: 1px solid #ddd; overflow: auto; }
+.imageInsert { border: 1px solid #ddd; padding: 12px; margin: 12px 0; }
+.imageInsert > button { margin-top: 8px; }
+.importResult { padding: 14px 0 2px; }
+.importResult p { margin: 0 0 7px; }
+.empty { border-top: 1px solid #ddd; padding: 22px 0; color: #666; }
+.saveBar { position: sticky; bottom: 0; z-index: 700; background: #fff; border-top: 1px solid #000; display: flex; align-items: center; gap: 16px; padding: 16px 0; margin-top: 32px; }
+.saveBar > span { color: #666; font-size: 12px; }
+.editor .publish { display: flex; flex-direction: row; align-items: center; gap: 6px; white-space: nowrap; }
+.saveActions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.editor .saveButton { background: #000; color: #fff; border-color: #000; }
+.message { position: sticky; bottom: 65px; z-index: 701; background: #f3f3f3; border: 1px solid #aaa; padding: 12px; margin: 8px 0; overflow-wrap: anywhere; }
+.message[data-error="true"] { border-color: #000; border-left-width: 4px; }
+:global(.admin-main):has(.editor) { min-width: 0; overflow: visible; }
+:global(body):has(.editor) > :global(.footer) { display: none; }
+@media (min-width: 1200px) { .contentColumn { position: sticky; top: calc(var(--nav-h) + 20px); } }
+@media (max-width: 1050px) { .workspace { grid-template-columns: minmax(0, 1fr); } .map { height: 420px; } }
+@media (max-width: 700px) {
+  :global(.admin-container):has(.editor) { flex-direction: column; }
+  :global(.admin-container):has(.editor) > :global(.admin-sidebar) { width: 100%; padding: 12px 16px; border-right: 0; border-bottom: 1px solid #ddd; }
+  :global(.admin-container):has(.editor) :global(.admin-nav) { flex-direction: row; flex-wrap: wrap; margin-top: 8px; gap: 0; }
+  :global(.admin-container):has(.editor) :global(.admin-nav-item) { padding: 6px 8px; width: auto; }
+  :global(.admin-main):has(.editor) { padding: 20px 16px; }
+  .settings { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .settings > label:first-child { grid-column: 1 / -1; }
+  .importFields { grid-template-columns: minmax(0, 1fr); }
+  .map, .mapLoading { height: 340px; }
+  .saveBar { flex-wrap: wrap; gap: 8px; }
+  .saveActions { margin-left: 0; width: 100%; }
+  .saveActions .saveButton { margin-left: auto; }
+  .message { bottom: 110px; }
+}

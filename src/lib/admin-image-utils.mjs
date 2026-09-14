@@ -1,4 +1,4 @@
-const UPYUN_HOSTS = new Set(["img.ixzki.com", "upyun.ixzki.com"]);
+import { isUpyunHostname, upyunTransformsEnabled } from "./image-hosts.mjs";
 
 function safeWidth(width) {
   if (!Number.isFinite(width)) return 320;
@@ -32,7 +32,7 @@ export function adminPreviewImageUrl(src, width = 320, quality = 76) {
   const targetQuality = safeQuality(quality);
   const url = new URL(src.trim());
 
-  if (!UPYUN_HOSTS.has(url.hostname)) return src;
+  if (!isUpyunHostname(url.hostname) || !upyunTransformsEnabled()) return src;
 
   url.pathname = `${stripUpyunProcessing(url.pathname)}!/fw/${targetWidth}/quality/${targetQuality}/format/webp`;
   return url.toString();

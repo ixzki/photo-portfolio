@@ -7,8 +7,17 @@ import {
 } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { LAYOUT_OPTIONS } from "@/lib/types";
+import { revalidatePath } from "next/cache";
 
 const layoutValues = new Set<string>(LAYOUT_OPTIONS.map((option) => option.value));
+
+function refreshProjectPages() {
+  revalidatePath("/");
+  revalidatePath("/works");
+  revalidatePath("/works/[slug]", "page");
+  revalidatePath("/admin/projects");
+  revalidatePath("/admin/features");
+}
 
 function isHttpUrl(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return false;
@@ -249,6 +258,7 @@ export async function PUT(request: NextRequest) {
   try {
     const updated = await updateProject(id, payload);
     if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    refreshProjectPages();
     return NextResponse.json(updated);
   } catch (error) {
     return writeErrorResponse(error);
@@ -265,6 +275,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const result = await deleteProject(id);
     if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    refreshProjectPages();
     return NextResponse.json({ success: true });
   } catch (error) {
     return writeErrorResponse(error);

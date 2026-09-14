@@ -1,6 +1,6 @@
-export type ImageVariant = "thumb" | "feature" | "detail" | "cover" | "avatar";
+import { isUpyunHostname, isUnsplashHostname, upyunTransformsEnabled } from "./image-hosts.mjs";
 
-const UPYUN_HOSTS = new Set(["img.ixzki.com", "upyun.ixzki.com"]);
+export type ImageVariant = "thumb" | "feature" | "detail" | "cover" | "avatar";
 
 const VARIANT_QUALITY: Record<ImageVariant, number> = {
   thumb: 82,
@@ -31,7 +31,8 @@ export function getImageVariantQuality(variant: ImageVariant): number {
 
 export function isUpyunImageUrl(src: string): boolean {
   try {
-    return UPYUN_HOSTS.has(new URL(src).hostname);
+    const url = new URL(src);
+    return (url.protocol === "https:" || url.protocol === "http:") && isUpyunHostname(url.hostname);
   } catch {
     return false;
   }
@@ -54,13 +55,15 @@ export function toResponsiveImageUrl(
 
   try {
     const url = new URL(src);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return src;
 
-    if (UPYUN_HOSTS.has(url.hostname)) {
+    if (isUpyunHostname(url.hostname)) {
+      if (!upyunTransformsEnabled()) return src;
       url.pathname = `${stripUpyunProcessing(url.pathname)}!/fw/${targetWidth}/quality/${targetQuality}/format/webp`;
       return url.toString();
     }
 
-    if (url.hostname.includes("unsplash.com")) {
+    if (isUnsplashHostname(url.hostname)) {
       url.searchParams.set("auto", "format");
       url.searchParams.set("fit", url.searchParams.get("fit") || "crop");
       url.searchParams.set("w", String(targetWidth));
@@ -73,6 +76,12 @@ export function toResponsiveImageUrl(
 }
 
 export function toTinyPlaceholderUrl(src: string): string {
-  if (!isUpyunImageUrl(src) && !src.includes("unsplash.com")) return "";
-  return toResponsiveImageUrl(src, { width: 96, quality: 34, variant: "thumb" });
+  try {
+    const url = new URL(src);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+    if (!(isUpyunHostname(url.hostname) && upyunTransformsEnabled()) && !isUnsplashHostname(url.hostname)) return "";
+    return toResponsiveImageUrl(src, { width: 96, quality: 34, variant: "thumb" });
+  } catch {
+    return "";
+  }
 }

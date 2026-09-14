@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 export default function Navbar({ siteName }: { siteName: string }) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
-  const isDetail = pathname.startsWith("/works/") && pathname !== "/works";
+  const isDetail = pathname.startsWith("/works/") || pathname.startsWith("/travel/");
 
   useEffect(() => {
     if (!isDetail) {
@@ -30,11 +30,12 @@ export default function Navbar({ siteName }: { siteName: string }) {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
     };
-  }, [isDetail]);
+  }, [isDetail, pathname]);
 
   // Determine active nav item
   const isHome = pathname === "/";
   const isWorks = pathname === "/works";
+  const isTravel = pathname === "/travel" || pathname.startsWith("/travel/");
   const isAbout = pathname === "/about";
 
   return (
@@ -52,6 +53,15 @@ export default function Navbar({ siteName }: { siteName: string }) {
           data-nav="works"
         >
           作品
+        </Link>
+        <span className="menu-divider" aria-hidden="true" />
+        <Link
+          className={`menu-item hover-invert ${isTravel ? "is-active" : ""}`}
+          href="/travel"
+          data-nav="travel"
+          aria-current={isTravel ? "page" : undefined}
+        >
+          旅行
         </Link>
         <span className="menu-divider" aria-hidden="true" />
         <Link

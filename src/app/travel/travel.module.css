@@ -1,0 +1,156 @@
+:global(body):has(.overview) > :global(.footer),
+:global(body):has(.journey) > :global(.footer) {
+  display: none;
+}
+.overview {
+  position: relative;
+  width: 100%;
+  height: calc(100dvh - var(--nav-h));
+  isolation: isolate;
+  background: #f1f1f1;
+}
+.routeHit { cursor: pointer; }
+.progressLine { pointer-events: none; }
+.detailPage:global(.detail-page) > :global(.cover),
+.detailPage:global(.detail-page) :global(.cover-image) {
+  height: 100dvh;
+}
+.detailPage .coverCaption:global(.project-title-container) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+}
+.coverOutline {
+  display: block;
+  width: clamp(150px, 19vw, 300px);
+  height: auto;
+  color: #000;
+}
+.journey {
+  --mini-map-width: clamp(220px, 28vw, 360px);
+  --mini-map-height: clamp(180px, 22vw, 280px);
+  min-height: calc(100dvh - var(--nav-h));
+  padding: 0 var(--edge-gap);
+}
+.detailPage .journey:global(.detail-content) {
+  display: block;
+  padding: 0 var(--edge-gap);
+}
+.mapPane {
+  position: fixed;
+  top: calc(var(--nav-h) + var(--edge-gap));
+  left: var(--edge-gap);
+  width: var(--mini-map-width);
+  height: var(--mini-map-height);
+  z-index: 600;
+  isolation: isolate;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .42s ease, visibility .42s ease;
+}
+.mapPane[data-visible="true"] { opacity: 1; visibility: visible; }
+.mapFrame { position: absolute; inset: 0 0 18px; }
+.mapPane .map {
+  opacity: .6;
+  --feather: 20px;
+  mask-image: linear-gradient(to right, transparent, #000 var(--feather), #000 calc(100% - var(--feather)), transparent), linear-gradient(to bottom, transparent, #000 var(--feather), #000 calc(100% - var(--feather)), transparent);
+  mask-composite: intersect;
+  pointer-events: auto;
+  touch-action: pan-y;
+}
+.centerDot { position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; transform: translate(-50%, -50%); border-radius: 50%; background: #000; box-shadow: 0 0 0 2px #fff; pointer-events: none; z-index: 500; }
+.miniControls { position: absolute; right: 8px; top: 8px; z-index: 500; display: flex; pointer-events: auto; }
+.miniControls button { width: 32px; height: 32px; padding: 0; border: 0; background: rgb(255 255 255 / 60%); color: #000; font: inherit; font-size: 19px; cursor: pointer; }
+.miniControls button:focus-visible { outline: 1px solid #000; outline-offset: 2px; }
+.miniAttribution { position: absolute; bottom: 0; left: 20px; color: #666; font-size: 9px; line-height: 18px; pointer-events: auto; }
+.map, .mapLoading { width: 100%; height: 100%; background: #f1f1f1; }
+.map { font-family: inherit; }
+.baseTiles { filter: grayscale(1) contrast(.55) brightness(1.3); }
+.map :global(img.leaflet-tile) {
+  filter: none;
+  opacity: 1;
+  background: transparent;
+  transition: none;
+}
+.map :global(.leaflet-control-attribution) {
+  background: rgb(255 255 255 / 90%);
+  color: #555;
+  font-family: inherit;
+  font-size: 10px;
+  margin: 0;
+}
+.map :global(.leaflet-control-attribution a) { color: inherit; }
+.mapControls {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+.mapControls button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+}
+.mapControls button:disabled { opacity: .3; cursor: default; }
+.mapControls button:focus-visible, .stopTitle button:focus-visible, .markerButton:focus-visible { outline: 1px solid #000; outline-offset: 2px; }
+.marker { background: transparent; border: none; }
+.markerButton {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.markerButton::after { content: ""; width: 10px; height: 10px; border: 2px solid #000; border-radius: 50%; background: #fff; transition: transform .28s ease, background .28s ease; }
+.markerButton[data-active="true"]::after { background: #000; transform: scale(1.45); box-shadow: 0 0 0 3px #fff; }
+.tooltip { border: 0; border-radius: 0; box-shadow: none; background: #fff; color: #000; font-family: inherit; }
+.mapError { position: absolute; left: 0; right: 0; bottom: 25px; z-index: 500; margin: 0; text-align: center; font-size: 12px; }
+.journal { min-width: 0; margin-left: calc(var(--mini-map-width) + var(--edge-gap) * 2); padding: var(--edge-gap) 0 0; }
+.title, .stopTitle { font-size: var(--font-size); line-height: 1.5; font-weight: 400; margin: 0; }
+.journalHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: clamp(48px, 8vw, 120px); }
+.stop { scroll-margin-top: calc(var(--nav-h) + (100dvh - var(--nav-h)) * .2); min-height: 70dvh; padding-bottom: clamp(70px, 10vw, 150px); }
+.stop:last-child { min-height: calc(100dvh - var(--nav-h)); }
+.stopTitle { margin-bottom: var(--edge-gap); }
+.stopTitle button { display: inline-flex; align-items: center; max-width: 100%; border: 0; padding: .15em .45em; font: inherit; font-weight: 700 !important; line-height: 1; background: transparent; color: var(--fore-color); cursor: pointer; text-align: left; }
+.stopTitle button:hover, .stopTitle button:focus-visible, .stopTitle button[aria-current="location"] { background: var(--fore-color); color: var(--back-color); }
+.photo { margin: 0 0 var(--edge-gap); }
+.photo img { width: 100%; height: auto; }
+.prose { font-size: calc(var(--font-size) * .86); line-height: 1.9; user-select: text; }
+.prose p { margin: var(--edge-gap) 0 0; white-space: pre-line; overflow-wrap: anywhere; }
+@media (min-width: 1024px) {
+  .journey { --mini-map-width: clamp(420px, 38vw, 600px); --mini-map-height: clamp(330px, 31vw, 470px); }
+}
+@media (max-width: 600px) {
+  .journey { --mini-map-width: clamp(138px, 40vw, 184px); --mini-map-height: clamp(128px, 21dvh, 176px); padding-inline: 16px; }
+  .detailPage .journey:global(.detail-content) { padding-inline: 16px; }
+  .coverOutline { width: 150px; }
+  .mapPane .map { --feather: 14px; }
+  .miniControls { top: 4px; right: 4px; }
+  .miniControls button { width: 30px; height: 30px; }
+  .journal { margin-left: 0; }
+  .journalHeader { padding-left: calc(var(--mini-map-width) + 8px); min-height: calc(var(--mini-map-height) + 16px); align-items: flex-start; }
+  .stop { scroll-margin-top: calc(var(--nav-h) + var(--edge-gap) + var(--mini-map-height) + 16px); }
+  .mapControls { left: 4px; top: 6px; }
+  .mapControls button { width: 32px; height: 36px; }
+  .title { font-size: 15px; }
+  .journalHeader { margin-bottom: 44px; }
+  .prose { font-size: 15px; line-height: 1.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .markerButton::after, .mapPane { transition: none; }
+}

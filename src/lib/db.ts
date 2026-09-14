@@ -4,16 +4,14 @@ import { seedFeatures, seedProjects, seedSettings } from "./data";
 import { isRetryableReadQuery, withDatabaseRetry } from "./db-retry-utils.mjs";
 import { hasManualProjectOrder, sortProjectsForDisplay } from "./project-order-utils.mjs";
 import { FeatureItem, Image, LayoutType, MediaItem, Project, Row, SiteSettings } from "./types";
+import { databaseUrl, isDemoPreview, isReadOnlyPreview } from "./preview-config.mjs";
+import { redirect } from "next/navigation";
 
 type SqlClient = ReturnType<typeof neon>;
 type ProjectCreateInput = Omit<Project, "id" | "rows"> & { rows?: Omit<Row, "id" | "images">[] };
 let sqlClient: SqlClient | null = null;
 let retryingSqlClient: SqlClient | null = null;
 let schemaReady: Promise<void> | null = null;
-
-function databaseUrl() {
-  return process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || "";
-}
 
 function getSql() {
   if (!databaseUrl()) throw new Error("数据库未配置，请先提供在线数据库链接 DATABASE_URL。");
@@ -26,6 +24,9 @@ function getRetryingSql() {
   if (!retryingSqlClient) {
     retryingSqlClient = (async (...args: Parameters<SqlClient>) => {
       const [query] = args;
+      if (isReadOnlyPreview() && (typeof query !== "string" || !/^\s*SELECT\b/i.test(query))) {
+        throw new Error("当前为只读预览，数据库写入已禁用。");
+      }
       if (isRetryableReadQuery(query)) {
         return withDatabaseRetry(() => sql(...args));
       }
@@ -178,6 +179,7 @@ async function ensureSchema(sql: SqlClient) {
 }
 
 export async function setupDatabaseSchema() {
+  if (isReadOnlyPreview()) throw new Error("只读预览不能初始化数据库。");
   await ensureSchema(getSql());
 }
 
@@ -223,6 +225,8 @@ export async function checkConnection(): Promise<boolean> {
 
 // ---- Projects ----
 async function readProjects(visibleOnly: boolean): Promise<Project[]> {
+  if (isDemoPreview()) return sortProjectsForDisplay(structuredClone(seedProjects).filter((p) => !visibleOnly || p.visible));
+  if (!hasDatabase()) redirect("/setup");
   const sql = await db();
   const rows = await sql(
     visibleOnly
@@ -244,18 +248,21 @@ export const getProjects = cache(getProjectsImpl);
 export const getAllProjects = cache(getAllProjectsImpl);
 
 export const getProjectById = cache(async function getProjectById(id: string): Promise<Project | null> {
+  if (isDemoPreview()) return structuredClone(seedProjects.find((p) => p.id === id) || null);
   const sql = await db();
   const rows = await sql("SELECT data FROM portfolio_projects WHERE id = $1 LIMIT 1", [id]) as Array<{ data: Project }>;
   return rows[0] ? normalizeProject(rows[0].data) : null;
 });
 
 export const getProjectBySlug = cache(async function getProjectBySlug(slug: string): Promise<Project | null> {
+  if (isDemoPreview()) return structuredClone(seedProjects.find((p) => p.slug === slug) || null);
   const sql = await db();
   const rows = await sql("SELECT data FROM portfolio_projects WHERE slug = $1 LIMIT 1", [slug]) as Array<{ data: Project }>;
   return rows[0] ? normalizeProject(rows[0].data) : null;
 });
 
 export const getVisibleProjectBySlug = cache(async function getVisibleProjectBySlug(slug: string): Promise<Project | null> {
+  if (isDemoPreview()) return structuredClone(seedProjects.find((p) => p.slug === slug && p.visible) || null);
   const sql = await db();
   const rows = await sql(
     "SELECT data FROM portfolio_projects WHERE slug = $1 AND visible = true LIMIT 1",
@@ -464,6 +471,8 @@ export async function reorderImages(projectId: string, rowId: string, imageIds: 
 
 // ---- Features ----
 async function readFeatures(visibleProjectsOnly: boolean): Promise<FeatureItem[]> {
+  if (isDemoPreview()) return structuredClone(seedFeatures);
+  if (!hasDatabase()) redirect("/setup");
   const sql = await db();
   const featureRows = await sql(
     "SELECT data FROM portfolio_features ORDER BY order_index ASC, id ASC"
@@ -507,6 +516,7 @@ export async function getFeatureSummary(): Promise<{
   features: FeatureItem[];
   projects: Project[];
 }> {
+  if (isDemoPreview()) return { features: structuredClone(seedFeatures), projects: structuredClone(seedProjects) };
   const sql = await db();
   const featureRows = await sql(
     "SELECT data FROM portfolio_features ORDER BY order_index ASC, id ASC"
@@ -601,6 +611,7 @@ export async function reorderFeatures(ids: string[]): Promise<FeatureItem[]> {
 
 // ---- Media library ----
 export async function getMediaItems(): Promise<MediaItem[]> {
+  if (isDemoPreview()) return [];
   const sql = await db();
 
   const rows = await sql(
@@ -649,6 +660,8 @@ export async function deleteMediaItem(id: string): Promise<boolean> {
 
 // ---- Settings ----
 async function getSettingsImpl(): Promise<SiteSettings> {
+  if (isDemoPreview()) return structuredClone(seedSettings);
+  if (!hasDatabase()) redirect("/setup");
   const sql = await db();
 
   const rows = await sql("SELECT data FROM portfolio_settings WHERE id = 'default' LIMIT 1") as Array<{ data: SiteSettings }>;
@@ -657,6 +670,11 @@ async function getSettingsImpl(): Promise<SiteSettings> {
 }
 
 export const getSettings = cache(getSettingsImpl);
+
+// The configuration page must be renderable before a database is configured.
+export async function getShellSettings(): Promise<SiteSettings> {
+  return hasDatabase() ? getSettings() : structuredClone(seedSettings);
+}
 
 export async function updateSettings(data: Partial<SiteSettings>): Promise<SiteSettings> {
   const updated = normalizeSettings({ ...(await getSettings()), ...data });

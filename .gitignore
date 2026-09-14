@@ -50,3 +50,5 @@ CLAUDE.md
 .codex/
 .cursor/
 .windsurf/
+.local-preview/
+__pycache__/

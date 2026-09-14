@@ -1,21 +1,22 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { databaseUrl, isDemoPreview, isPreviewWriteBlocked } from "./lib/preview-config.mjs";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (pathname.startsWith("/api/")) {
+    if (isPreviewWriteBlocked(pathname, request.method)) {
+      return NextResponse.json({ error: "当前为只读预览，新增、修改和删除已禁用。" }, { status: 403 });
+    }
+    return NextResponse.next();
+  }
 
   // Don't redirect setup page or static assets.
   if (pathname.startsWith("/setup") || pathname.startsWith("/_next") || pathname.includes(".")) {
     return NextResponse.next();
   }
 
-  // If no DATABASE_URL, redirect to setup (skip in dev because seed data can be used).
-  if (
-    process.env.NODE_ENV !== "development" &&
-    !process.env.DATABASE_URL &&
-    !process.env.POSTGRES_URL &&
-    !process.env.POSTGRES_PRISMA_URL
-  ) {
+  if (!databaseUrl() && !isDemoPreview()) {
     return NextResponse.redirect(new URL("/setup", request.url));
   }
 
@@ -23,5 +24,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+  matcher: "/((?!_next/static|_next/image|favicon.ico).*)",
 };

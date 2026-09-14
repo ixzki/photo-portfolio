@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
-export default function DetailProjectTitle({ title }: { title: string }) {
+export default function DetailProjectTitle({ title, children, className = "" }: { title: string; children?: ReactNode; className?: string }) {
   const [visible, setVisible] = useState(true);
   const lastScrollY = useRef(0);
   const frame = useRef(0);
@@ -41,7 +41,8 @@ export default function DetailProjectTitle({ title }: { title: string }) {
   }, []);
 
   return (
-    <div className={`project-title-container${visible ? " is-visible" : " is-hidden"}`}>
+    <div className={`project-title-container${visible ? " is-visible" : " is-hidden"} ${className}`}>
+      {children}
       <h1 className="project-title hover-invert is-active">{title}</h1>
     </div>
   );

@@ -5,7 +5,8 @@ import DetailImageFrame from "@/components/DetailImageFrame";
 import DetailMotionTrigger from "@/components/DetailMotionTrigger";
 import DetailProjectTitle from "@/components/DetailProjectTitle";
 import ImageLoader from "@/components/ImageLoader";
-import { getProjectDetailData, getProjects } from "@/lib/db";
+import { getProjectDetailData, getProjects, hasDatabase } from "@/lib/db";
+import { isDemoPreview } from "@/lib/preview-config.mjs";
 import { Project, Row } from "@/lib/types";
 
 export const revalidate = 300;
@@ -13,6 +14,7 @@ export const revalidate = 300;
 type DetailPageProps = { params: Promise<{ slug: string }> };
 
 export async function generateStaticParams() {
+  if (!hasDatabase() && !isDemoPreview()) return [];
   const projects = await getProjects();
   return projects.map((project) => ({ slug: project.slug }));
 }
