@@ -1,4 +1,4 @@
-import type { Coordinate, Journey, JourneyStop } from "./journey";
+import type { Coordinate, Journey, JourneyPointMetadata, JourneyStop } from "./journey";
 
 export const MAX_TRAVEL_BYTES = 3_500_000;
 export const MAX_TRAVEL_POINTS = 100_000;
@@ -118,6 +118,16 @@ export function validateTravelDocument(value: unknown): TravelDocument {
       return position;
     });
   });
+  let pointMeta: JourneyPointMetadata[] | undefined;
+  if (route.pointMeta !== undefined) {
+    if (!Array.isArray(route.pointMeta) || route.pointMeta.length !== points.length) fail("轨迹时间与海拔数据必须与轨迹点一一对应，请重新导入 CSV。");
+    pointMeta = route.pointMeta.map((raw) => {
+      const entry = object(raw, "轨迹时间与海拔");
+      if (entry.time !== null && (typeof entry.time !== "number" || !Number.isFinite(entry.time) || Math.abs(entry.time) > 8_640_000_000_000)) fail("轨迹时间应为 Unix 秒或空值。");
+      if (entry.altitude !== null && (typeof entry.altitude !== "number" || !Number.isFinite(entry.altitude))) fail("海拔应为以米计的数值或空值。");
+      return { time: entry.time as number | null, altitude: entry.altitude as number | null };
+    });
+  }
   if (!Array.isArray(route.stops) || route.stops.length > MAX_TRAVEL_BLOCKS) fail(`正文不能超过 ${MAX_TRAVEL_BLOCKS} 段。`);
   const ids = new Set<string>();
   const stops: JourneyStop[] = route.stops.map((raw) => {
@@ -126,6 +136,7 @@ export function validateTravelDocument(value: unknown): TravelDocument {
     if (ids.has(stopId)) fail("正文 ID 重复，请重新添加该段。");
     ids.add(stopId);
     const stopTitle = string(stop.title, "地点或线路段名称", 200);
+    if (stop.featured !== undefined && typeof stop.featured !== "boolean") fail(`“${stopTitle}”的精选状态应为勾选或未勾选。`);
     coordinate(stop.position);
     const start = routeIndex(stop.routePointIndex, points.length, `“${stopTitle}”的起点`);
     const end = stop.routeEndPointIndex === undefined ? undefined : routeIndex(stop.routeEndPointIndex, points.length, `“${stopTitle}”的终点`);
@@ -139,6 +150,7 @@ export function validateTravelDocument(value: unknown): TravelDocument {
       id: stopId, title: stopTitle, position: [...points[start]] as Coordinate,
       routePointIndex: start, ...(end === undefined ? {} : { routeEndPointIndex: end }),
       paragraphs, images, ...(markdown === undefined ? {} : { markdown }),
+      ...(stop.featured === undefined ? {} : { featured: stop.featured }),
     };
   }).sort((left, right) => left.routePointIndex! - right.routePointIndex!);
   for (let index = 0; index < stops.length - 1; index++) {
@@ -149,7 +161,7 @@ export function validateTravelDocument(value: unknown): TravelDocument {
   if (data.visible && (points.length < 2 || stops.length === 0)) fail("发布前需要导入或绘制路线，并添加至少一处地点或线路段正文。");
   if (data.visible && !stops.some((stop) => stop.markdown?.trim() || stop.paragraphs.some((text) => text.trim()) || stop.images.length > 0)) fail("发布前请为地点或线路段填写正文或图片。");
   return { id, slug, shade, cover, visible: data.visible, revision: data.revision, updatedAt,
-    journey: { title, segments, stops } };
+    journey: { title, segments, stops, ...(pointMeta === undefined ? {} : { pointMeta }) } };
 }
 
 export function travelSummary(document: TravelDocument): TravelSummary {

@@ -26,10 +26,12 @@
 .markdown blockquote p:last-child { margin-bottom: 0; }
 .markdown img {
   display: block;
-  width: 100%;
+  width: var(--journey-image-width, 100%);
   max-width: 100%;
   height: auto;
-  margin: var(--edge-gap, 24px) 0;
+  max-height: var(--journey-image-max-height, none);
+  object-fit: contain;
+  margin: var(--edge-gap, 24px) auto;
   filter: none;
   opacity: 1;
   background-image: none;

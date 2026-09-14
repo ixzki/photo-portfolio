@@ -10,6 +10,22 @@
   background: #f1f1f1;
 }
 .routeHit { cursor: pointer; }
+.fullRoute {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 400svh;
+  background: #f1f1f1;
+  isolation: isolate;
+  scroll-margin-top: 0;
+}
+.fullRouteStage { position: sticky; top: 0; width: 100%; height: 100dvh; overflow: hidden; }
+.fullRoute .mapControls { top: calc(var(--nav-h) + 12px); }
+.fullRoute .map { touch-action: pan-y; }
+.fullRouteCallout:global(.leaflet-tooltip) { width: max-content; padding: 8px; border: 0; border-radius: 0; box-shadow: none; background: rgb(255 255 255 / 94%); color: #000; font-family: inherit; white-space: normal; max-width: min(280px, calc(100vw - 56px)); }
+.highlightTitle { display: block; width: fit-content; color: #000; font-size: calc(var(--font-size) * .86); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.highlightMeta { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; line-height: 1.5; color: #555; font-variant-numeric: tabular-nums; }
+.highlightMeta:not(:empty) { margin-top: 6px; }
 .progressLine { pointer-events: none; }
 .detailPage:global(.detail-page) > :global(.cover),
 .detailPage:global(.detail-page) :global(.cover-image) {
@@ -120,20 +136,83 @@
 .markerButton[data-active="true"]::after { background: #000; transform: scale(1.45); box-shadow: 0 0 0 3px #fff; }
 .tooltip { border: 0; border-radius: 0; box-shadow: none; background: #fff; color: #000; font-family: inherit; }
 .mapError { position: absolute; left: 0; right: 0; bottom: 25px; z-index: 500; margin: 0; text-align: center; font-size: 12px; }
-.journal { min-width: 0; margin-left: calc(var(--mini-map-width) + var(--edge-gap) * 2); padding: var(--edge-gap) 0 0; }
-.title, .stopTitle { font-size: var(--font-size); line-height: 1.5; font-weight: 400; margin: 0; }
-.journalHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: clamp(48px, 8vw, 120px); }
-.stop { scroll-margin-top: calc(var(--nav-h) + (100dvh - var(--nav-h)) * .2); min-height: 70dvh; padding-bottom: clamp(70px, 10vw, 150px); }
-.stop:last-child { min-height: calc(100dvh - var(--nav-h)); }
-.stopTitle { margin-bottom: var(--edge-gap); }
+.journal {
+  --journey-image-width: auto;
+  --journey-image-max-height: max(180px, calc(100svh - var(--nav-h) - 80px));
+  min-width: 0;
+  max-width: min(960px, calc((100svh - var(--nav-h) - 80px) * 4 / 3));
+  margin-left: calc(var(--mini-map-width) + var(--edge-gap) * 2);
+  padding: clamp(28px, 4vw, 56px) 0 0;
+}
+.stop { scroll-margin-top: calc(var(--nav-h) + (100dvh - var(--nav-h)) * .2); padding-bottom: clamp(32px, 4vw, 64px); }
+.stop:last-child { padding-bottom: 48px; }
+.stopHeader { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 20px; margin-bottom: 18px; }
+.stopTitle { min-width: 0; max-width: 100%; font-size: var(--font-size); line-height: 1.5; font-weight: 400; margin: 0; }
+.stopMeta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 14px; margin-left: auto; color: #666; font-size: 12px; font-weight: 400; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.stopMeta span { white-space: nowrap; }
 .stopTitle button { display: inline-flex; align-items: center; max-width: 100%; border: 0; padding: .15em .45em; font: inherit; font-weight: 700 !important; line-height: 1; background: transparent; color: var(--fore-color); cursor: pointer; text-align: left; }
 .stopTitle button:hover, .stopTitle button:focus-visible, .stopTitle button[aria-current="location"] { background: var(--fore-color); color: var(--back-color); }
 .photo { margin: 0 0 var(--edge-gap); }
-.photo img { width: 100%; height: auto; }
+.photo img { display: block; width: auto; max-width: 100%; height: auto; max-height: var(--journey-image-max-height); margin-inline: auto; object-fit: contain; }
 .prose { font-size: calc(var(--font-size) * .86); line-height: 1.9; user-select: text; }
 .prose p { margin: var(--edge-gap) 0 0; white-space: pre-line; overflow-wrap: anywhere; }
+.stopNav {
+  --stop-nav-row-space: 4px;
+  --stop-nav-active-space: 9px;
+  position: fixed;
+  top: calc(var(--nav-h) + var(--edge-gap));
+  right: var(--edge-gap);
+  width: min(220px, calc(100vw - var(--mini-map-width) - var(--edge-gap) * 3));
+  height: var(--mini-map-height);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  color: #000;
+  background: rgb(255 255 255 / 94%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .42s ease, visibility .42s ease;
+}
+.stopNav[data-visible="true"] { opacity: 1; visibility: visible; }
+.stopNavList { width: 100%; max-height: 100%; margin: 0; padding: 4px 2px; overflow-y: auto; overscroll-behavior-y: contain; list-style: none; }
+.stopNavList button {
+  display: block;
+  width: 100%;
+  padding: var(--stop-nav-row-space) 2px;
+  border: 0;
+  background: transparent;
+  color: #000;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: font-size .36s ease, font-weight .36s ease, padding-block .36s ease, line-height .36s ease;
+}
+.stopNavList button[aria-current="location"] { font-size: 15px; font-weight: 700; padding-block: var(--stop-nav-active-space); line-height: 1.6; }
+.stopNavList button:hover { text-decoration: underline; text-underline-offset: 4px; }
+.stopNavList button:focus-visible { outline: 1px solid #000; outline-offset: -1px; }
+@media (max-width: 1023px) and (min-width: 601px) {
+  .journal { padding-top: calc(var(--mini-map-height) + 36px); }
+  .stop { scroll-margin-top: calc(var(--nav-h) + var(--edge-gap) + var(--mini-map-height) + 16px); }
+}
 @media (min-width: 1024px) {
-  .journey { --mini-map-width: clamp(420px, 38vw, 600px); --mini-map-height: clamp(330px, 31vw, 470px); }
+  .journey {
+    --journal-width: min(960px, 60vw, calc((100svh - var(--nav-h) - 80px) * 4 / 3));
+    --mini-map-width: calc((100vw - var(--journal-width)) / 2 - var(--edge-gap) * 2);
+    --mini-map-height: calc(100dvh - var(--nav-h) - var(--edge-gap) * 2);
+  }
+  .journal { width: var(--journal-width); margin-inline: auto; }
+  .stopNav {
+    --stop-nav-active-space: 11px;
+    width: min(240px, var(--mini-map-width));
+    height: calc(100dvh - var(--nav-h) - var(--edge-gap) * 2);
+    background: transparent;
+  }
+  .stopNavList button { font-size: 12px; }
+  .stopNavList button[aria-current="location"] { font-size: clamp(16px, 1.2vw, 20px); }
 }
 @media (max-width: 600px) {
   .journey { --mini-map-width: clamp(138px, 40vw, 184px); --mini-map-height: clamp(128px, 21dvh, 176px); padding-inline: 16px; }
@@ -141,16 +220,22 @@
   .coverOutline { width: 150px; }
   .mapPane .map { --feather: 14px; }
   .miniControls { top: 4px; right: 4px; }
-  .miniControls button { width: 30px; height: 30px; }
-  .journal { margin-left: 0; }
-  .journalHeader { padding-left: calc(var(--mini-map-width) + 8px); min-height: calc(var(--mini-map-height) + 16px); align-items: flex-start; }
+  .miniControls button { width: 24px; height: 24px; font-size: 16px; }
+  .stopNav { --stop-nav-row-space: 2px; --stop-nav-active-space: 6px; }
+  .stopNavList button { font-size: 10px; }
+  .stopNavList button[aria-current="location"] { font-size: 13px; }
+  .journal { margin-left: 0; max-width: none; padding-top: calc(var(--mini-map-height) + 36px); --journey-image-max-height: max(180px, calc(100svh - var(--nav-h) - var(--mini-map-height) - 60px)); }
   .stop { scroll-margin-top: calc(var(--nav-h) + var(--edge-gap) + var(--mini-map-height) + 16px); }
   .mapControls { left: 4px; top: 6px; }
-  .mapControls button { width: 32px; height: 36px; }
-  .title { font-size: 15px; }
-  .journalHeader { margin-bottom: 44px; }
+  .mapControls button { width: 28px; height: 28px; font-size: 18px; }
+  .fullRoute .mapControls { top: calc(var(--nav-h) + 8px); }
+  .highlightTitle { font-size: 14px; }
+  .highlightMeta { font-size: 10px; }
+  .stopHeader { gap: 6px 12px; margin-bottom: 16px; }
+  .stopMeta { font-size: 10px; gap: 2px 8px; }
   .prose { font-size: 15px; line-height: 1.9; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .markerButton::after, .mapPane { transition: none; }
+  .markerButton::after, .mapPane, .stopNav, .stopNavList button { transition: none; }
+  .fullRoute { height: 100dvh; }
 }

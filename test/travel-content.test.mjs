@@ -91,3 +91,57 @@ test("image URLs use img.ixzki.com and executable or credential-bearing cover UR
     assert.throws(() => validateTravelDocument(document));
   }
 });
+
+test("optional recorded metadata survives validation and rejects mismatched or non-finite values", () => {
+  const document = draft();
+  assert.equal(validateTravelDocument(document).journey.pointMeta, undefined);
+  document.journey.pointMeta = document.journey.segments.flat().map((_, index) => ({ time: 1759136400 + index, altitude: index ? 1000 + index : null, unwanted: "ignored" }));
+  const normalized = validateTravelDocument(document);
+  assert.equal(normalized.journey.pointMeta.length, 5);
+  assert.deepEqual(normalized.journey.pointMeta[0], { time: 1759136400, altitude: null });
+  assertJourney(normalized.journey);
+  for (const invalid of [[], [{ time: 1, altitude: 2 }], "invalid"]) {
+    const changed = structuredClone(document);
+    changed.journey.pointMeta = invalid;
+    assert.throws(() => validateTravelDocument(changed), /一一对应/);
+    assert.throws(() => assertJourney(changed.journey), /metadata/);
+  }
+  for (const patch of [{ time: Infinity }, { altitude: NaN }, { time: "2025-01-01" }, { altitude: undefined }]) {
+    const changed = structuredClone(document);
+    Object.assign(changed.journey.pointMeta[0], patch);
+    assert.throws(() => validateTravelDocument(changed));
+    assert.throws(() => assertJourney(changed.journey), /metadata/);
+  }
+});
+
+test("featured selections stay attached to existing point and section stories through normalization", () => {
+  const document = draft();
+  assert.equal(validateTravelDocument(document).journey.stops[0].featured, undefined);
+  document.journey.stops[0].featured = true;
+  document.journey.stops[0].routeEndPointIndex = 3;
+  document.journey.stops[1].featured = false;
+  document.journey.stops[1].unwanted = "discard";
+  document.journey.featuredIds = ["missing-story"];
+  document.journey.stops.reverse();
+  const normalized = validateTravelDocument(document);
+  assert.deepEqual(normalized.journey.stops.map(({ id, featured }) => ({ id, featured })), [
+    { id: "start", featured: true }, { id: "end", featured: false },
+  ]);
+  assert.equal(normalized.journey.stops[0].routeEndPointIndex, 3);
+  assert.equal(normalized.journey.stops[1].unwanted, undefined);
+  assert.equal(normalized.journey.featuredIds, undefined);
+  assertJourney(normalized.journey);
+  const reloaded = validateTravelDocument(JSON.parse(JSON.stringify(normalized)));
+  assert.deepEqual(reloaded, normalized);
+  reloaded.journey.stops.splice(0, 1);
+  assert.equal(validateTravelDocument(reloaded).journey.stops.filter((stop) => stop.featured).length, 0);
+});
+
+test("featured selections reject non-boolean values instead of implicitly publishing a highlight", () => {
+  for (const featured of ["true", "false", 1, 0, null, [], {}]) {
+    const document = draft();
+    document.journey.stops[0].featured = featured;
+    assert.throws(() => validateTravelDocument(document), /精选状态/);
+    assert.throws(() => assertJourney(document.journey), /stop data/);
+  }
+});

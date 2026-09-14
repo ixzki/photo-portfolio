@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { assertJourney } from "../src/lib/journey.ts";
-import { buildJourneyTimeline, journeyPosition, visibleSegment, readingProgress, readingDistance } from "../src/lib/journey-progress.ts";
+import { buildJourneyTimeline, journeyPosition, visibleSegment, readingProgress, readingDistance, tailReadingLine } from "../src/lib/journey-progress.ts";
 
 const journey = JSON.parse(readFileSync(new URL("../src/data/travel.json", import.meta.url), "utf8"));
 
@@ -92,4 +92,26 @@ test("story section ranges reject missing anchors, overlap, backward travel and 
   }
   assert.throws(() => assertJourney({ ...route, stops: [stop, { ...stop, id: "b", routePointIndex: 1, routeEndPointIndex: 3 }] }));
   assertJourney({ ...route, stops: [stop, { ...stop, id: "b", routePointIndex: 2, routeEndPointIndex: 3 }] });
+});
+
+test("compact final notes remain readable and finish the route without extra viewport-height padding", () => {
+  // Four short final stories fit in the last viewport; the usual 20% reading line
+  // cannot reach the last heading, even after scrolling to the bottom.
+  const documentHeight = 3000;
+  const viewportHeight = 900;
+  const absoluteTops = [2080, 2250, 2440, 2730];
+  const lastBodyBottom = 2952;
+  const timeline = { stopDistances: [0, 100, 200, 300], stopEndDistances: [0, 100, 200, 400] };
+  const distances = [];
+  for (let scroll = 1200; scroll <= 2100; scroll += 10) {
+    const remaining = documentHeight - scroll - viewportHeight;
+    const line = tailReadingLine(220, lastBodyBottom - scroll, remaining, viewportHeight);
+    const reading = readingProgress(absoluteTops.map(top => top - scroll), line, Math.min(documentHeight - scroll, remaining + line));
+    distances.push(readingDistance(timeline, reading.index, reading.fraction));
+  }
+  assert.equal(tailReadingLine(220, 2000, 1000, viewportHeight), 220);
+  assert.ok(distances.every((value, i) => i === 0 || value >= distances[i - 1]));
+  assert.equal(distances.at(-1), 400);
+  assert.ok(distances.at(-2) < 400);
+  assert.equal(tailReadingLine(220, 100, 0, viewportHeight), 220);
 });

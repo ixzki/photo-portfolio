@@ -40,9 +40,21 @@ export function removeRouteSegment(journey: Journey, segmentIndex: number): Jour
   return {
     ...journey,
     segments: journey.segments.filter((_, index) => index !== segmentIndex),
+    ...(journey.pointMeta === undefined ? {} : { pointMeta: journey.pointMeta.filter((_, index) => index < first || index > last) }),
     stops: journey.stops.filter((stop) => (stop.routeEndPointIndex ?? stop.routePointIndex ?? 0) < first || (stop.routePointIndex ?? 0) > last)
       .map((stop) => ({ ...stop, routePointIndex: rebase(stop.routePointIndex ?? 0),
         ...(stop.routeEndPointIndex !== undefined ? { routeEndPointIndex: rebase(stop.routeEndPointIndex) } : {}) })),
+  };
+}
+
+/** Hand-drawn geometry has no recorded time or elevation; retain metadata for existing points only. */
+export function appendDrawnRoute(journey: Journey, segment: Coordinate[]): Journey {
+  return {
+    ...journey,
+    segments: [...journey.segments, segment],
+    ...(journey.pointMeta === undefined ? {} : {
+      pointMeta: [...journey.pointMeta, ...segment.map(() => ({ time: null, altitude: null }))],
+    }),
   };
 }
 

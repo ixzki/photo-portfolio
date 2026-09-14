@@ -2,6 +2,7 @@ import Link from "next/link";
 import { isAuthenticated } from "@/lib/auth";
 import { getTravelSummaries, isTravelTableMissing } from "@/lib/travel-db";
 import type { TravelSummary } from "@/lib/travel-content";
+import { formatJourneyTime } from "@/lib/journey-metadata";
 import styles from "./travel-admin.module.css";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ export default async function AdminTravelPage() {
                 <td><Link href={`/admin/travel/${journey.id}`}>{journey.title}</Link></td>
                 <td>{journey.stopCount} 段</td><td>{journey.pointCount.toLocaleString("zh-CN")}</td>
                 <td><span className={`admin-status-badge ${journey.visible ? "is-live" : "is-draft"}`}>{journey.visible ? "已发布" : "草稿"}</span></td>
-                <td>{new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", dateStyle: "medium", timeStyle: "short" }).format(new Date(journey.updatedAt))}</td>
+                <td>{formatJourneyTime(Date.parse(journey.updatedAt) / 1000)}</td>
                 <td><div className="admin-row-actions">
                   <Link href={`/admin/travel/${journey.id}`} className="admin-btn-sm">编辑</Link>
                   {journey.visible && <Link href={`/travel/${journey.slug}`} className="admin-btn-sm">查看</Link>}

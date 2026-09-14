@@ -98,6 +98,12 @@ export function readingProgress(tops: number[], readingLine: number, lastEnd?: n
   return { index, fraction };
 }
 
+/** Reach compact final stories within the remaining scroll space, without blank filler. */
+export function tailReadingLine(base: number, lastBodyBottom: number, remainingScroll: number, viewportHeight: number) {
+  const progress = Math.max(0, Math.min(1, 1 - remainingScroll / Math.max(1, viewportHeight * 0.65)));
+  return base + Math.max(0, lastBodyBottom - base) * progress;
+}
+
 export function readingDistance(
   timeline: Pick<ReturnType<typeof buildJourneyTimeline>, "stopDistances" | "stopEndDistances">,
   index: number,

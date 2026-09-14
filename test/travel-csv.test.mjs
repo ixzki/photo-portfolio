@@ -99,3 +99,28 @@ test("point limits reject the import without silently simplifying the recorded t
   }));
   assert.throws(() => splitTravelPoints(points, 60, 5), /超过 80,000 个点/);
 });
+
+test("timestamps and optional elevation stay aligned after sorting, duplicate removal, accuracy filtering and singleton gaps", async () => {
+  const csv = `time,lat,lon,accuracy,altitude
+2026-06-24T08:02,43.002,81,5,1200
+2026-06-24T08:00,43,81,5,-5.5
+2026-06-24T08:01,43,81,5,900
+2026-06-24T08:03,43.003,81,999,2000
+2026-06-24T09:30,44,82,5,3000
+2026-06-24T11:00,45,83,5,
+2026-06-24T11:01,45.001,83,5,0
+2026-06-24T11:02,45.002,83,5,unknown
+`;
+  const result = await importTravelCsvFile(new Blob([csv]), { ...options, maxAccuracy: 100 });
+  assert.deepEqual(result.segments, [[[43, 81], [43.002, 81]], [[45, 83], [45.001, 83], [45.002, 83]]]);
+  assert.deepEqual(result.pointMeta, [
+    { time: parseTravelTimestamp("2026-06-24T08:00"), altitude: -5.5 },
+    { time: parseTravelTimestamp("2026-06-24T08:02"), altitude: 1200 },
+    { time: parseTravelTimestamp("2026-06-24T11:00"), altitude: null },
+    { time: parseTravelTimestamp("2026-06-24T11:01"), altitude: 0 },
+    { time: parseTravelTimestamp("2026-06-24T11:02"), altitude: null },
+  ]);
+  assert.equal(result.pointMeta.length, result.stats.points);
+  const noAltitude = await importTravelCsvFile(new Blob(["time,lat,lon\n2026-06-24T08:00,43,81\n2026-06-24T08:01,43.001,81"]), options);
+  assert.deepEqual(noAltitude.pointMeta.map((point) => point.altitude), [null, null]);
+});

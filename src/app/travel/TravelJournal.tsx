@@ -5,16 +5,23 @@ import dynamic from "next/dynamic";
 import ImageLoader from "@/components/ImageLoader";
 import JourneyMarkdown from "@/components/JourneyMarkdown";
 import type { Journey } from "@/lib/journey";
-import { buildJourneyTimeline, readingDistance, readingProgress } from "@/lib/journey-progress";
+import { buildJourneyTimeline, readingDistance, readingProgress, tailReadingLine } from "@/lib/journey-progress";
+import { getStopMetadata } from "@/lib/journey-metadata";
+import JourneyStopNav from "./JourneyStopNav";
 import styles from "./travel.module.css";
 
 const RouteMap = dynamic(() => import("./RouteMap"), {
   ssr: false,
   loading: () => <div className={styles.mapLoading} role="status" aria-label="地图加载中" />,
 });
+const JourneyFullMap = dynamic(() => import("./JourneyFullMap"), {
+  ssr: false,
+  loading: () => <section className={styles.fullRoute}><div className={styles.fullRouteStage}><div className={styles.mapLoading} role="status" aria-label="全程地图加载中" /></div></section>,
+});
 
 export default function TravelJournal({ journey }: { journey: Journey }) {
   const timeline = useMemo(() => buildJourneyTimeline(journey), [journey]);
+  const stopMetadata = useMemo(() => new Map(journey.stops.map((stop) => [stop.id, getStopMetadata(journey, stop)])), [journey]);
   const [reading, setReading] = useState({ index: 0, distance: 0 });
   const activeId = journey.stops[reading.index]?.id ?? "";
   const articles = useRef(new Map<string, HTMLElement>());
@@ -23,8 +30,13 @@ export default function TravelJournal({ journey }: { journey: Journey }) {
   const [contentVisible, setContentVisible] = useState(false);
 
   const goToStop = useCallback((id: string) => {
-    articles.current.get(id)?.scrollIntoView({
-      block: "start",
+    const article = articles.current.get(id);
+    if (!article) return;
+    const inset = Number.parseFloat(getComputedStyle(article).scrollMarginTop) || 0;
+    window.scrollTo({
+      // Cross the reading line by two pixels so fractional layout rounding
+      // cannot leave the previous point selected after a navigation click.
+      top: window.scrollY + article.getBoundingClientRect().top - inset + 2,
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
     });
   }, []);
@@ -37,11 +49,16 @@ export default function TravelJournal({ journey }: { journey: Journey }) {
       const nav = document.querySelector("nav")?.getBoundingClientRect().height ?? 48;
       setContentVisible((content.current?.getBoundingClientRect().top ?? Infinity) <= nav * 2);
       const mapBottom = mapPane.current?.getBoundingClientRect().bottom ?? nav;
-      const readingLine = window.matchMedia("(max-width: 600px)").matches
+      const baseReadingLine = window.matchMedia("(max-width: 1023px)").matches
         ? mapBottom + 16
         : nav + (window.innerHeight - nav) * 0.2;
       const tops = journey.stops.map((stop) => articles.current.get(stop.id)?.getBoundingClientRect().top ?? Infinity);
       const last = articles.current.get(journey.stops.at(-1)?.id ?? "");
+      // Compact final notes can share one viewport. Move the reading line towards
+      // the last body's end as scrolling runs out, without adding empty screens.
+      const remainingScroll = Math.max(0, document.documentElement.scrollHeight - window.scrollY - window.innerHeight);
+      const lastBottom = last?.querySelector("[data-stop-body]")?.getBoundingClientRect().bottom ?? baseReadingLine;
+      const readingLine = tailReadingLine(baseReadingLine, lastBottom, remainingScroll, window.innerHeight);
       // The final story has no following heading. Its endpoint must be reachable at the page bottom.
       const reachableEnd = document.documentElement.scrollHeight - window.scrollY - window.innerHeight + readingLine;
       const lastEnd = Math.min(last?.getBoundingClientRect().bottom ?? Infinity, reachableEnd);
@@ -68,15 +85,16 @@ export default function TravelJournal({ journey }: { journey: Journey }) {
   }, [journey, timeline]);
 
   return (
+    <>
+    <JourneyFullMap journey={journey} />
     <div className={`detail-content ${styles.journey}`} ref={content}>
       <aside className={styles.mapPane} ref={mapPane} data-visible={contentVisible} aria-label="自驾路线地图">
         <RouteMap journey={journey} timeline={timeline} traveled={reading.distance} activeId={activeId} onSelect={goToStop} />
       </aside>
       <div className={styles.journal}>
-        <div className={styles.journalHeader}>
-          <h2 className={styles.title}>{journey.title}</h2>
-        </div>
-        {journey.stops.map((stop) => (
+        {journey.stops.map((stop) => {
+          const metadata = stopMetadata.get(stop.id)!;
+          return (
           <article
             key={stop.id}
             id={`stop-${stop.id}`}
@@ -85,11 +103,17 @@ export default function TravelJournal({ journey }: { journey: Journey }) {
             data-active={activeId === stop.id}
             aria-labelledby={`heading-${stop.id}`}
           >
+            <header className={styles.stopHeader}>
             <h2 id={`heading-${stop.id}`} className={styles.stopTitle}>
               <button type="button" className={`hover-invert${activeId === stop.id ? " is-active" : ""}`} onClick={() => goToStop(stop.id)} aria-current={activeId === stop.id ? "location" : undefined}>
                 {stop.title}
               </button>
             </h2>
+            {(metadata.time || metadata.altitude) && <div className={styles.stopMeta}>
+              {metadata.time && <span aria-label={`北京时间 ${metadata.time}`}>{metadata.time}</span>}
+              {metadata.altitude && <span aria-label={`海拔 ${metadata.altitude}`}>{metadata.altitude}</span>}
+            </div>}
+            </header>
             <div data-stop-body>
               {stop.images.map((photo, imageIndex) => (
                 <figure className={styles.photo} key={`${photo.src}-${imageIndex}`}>
@@ -102,8 +126,10 @@ export default function TravelJournal({ journey }: { journey: Journey }) {
               {stop.markdown && <JourneyMarkdown markdown={stop.markdown} />}
             </div>
           </article>
-        ))}
+        ); })}
       </div>
+      <JourneyStopNav stops={journey.stops} activeId={activeId} visible={contentVisible} onSelect={goToStop} />
     </div>
+    </>
   );
 }

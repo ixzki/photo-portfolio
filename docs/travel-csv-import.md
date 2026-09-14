@@ -7,6 +7,7 @@
 | 内容 | 支持的表头示例 |
 | --- | --- |
 | 时间 | `dataTime`、`timestamp`、`time`、`datetime`、`date`、`record_time`、时间、记录时间、定位时间 |
+| 海拔（可选，米） | `altitude`、`alt`、`elevation`、`ele`、`height`、海拔、海拔高度、高程 |
 | 纬度 | `latitude`、`lat`、纬度 |
 | 经度 | `longitude`、`lng`、`lon`、经度 |
 | 定位误差（米，可选） | `accuracy`、`horizontal_accuracy`、精度、水平精度、定位精度 |
@@ -19,6 +20,7 @@
 - 开始和结束时刻都包含在筛选范围内；例如结束 `10:25` 表示截至 `10:25:00`。如需完整一天，使用下一天开始前的 `23:59:59`。
 - 定位误差设为 0 时不筛选；启用时必须有精度列，超过设定误差的点会跳过。
 - 轨迹按时间排序，相邻位置重复时去重。默认相隔超过 60 分钟或 5 公里即断段，不连接缺失轨迹；不足两个点的孤立段不生成线路。
+- 时间和可选海拔随每个保留点一起保存，去重、断段时保持对应。缺失或无效海拔用空值，不用 0 代替；实际记录的 0 米保留。
 - 输出最多 80,000 个点、3 MB，超出后要求缩小日期范围，不会自动抽稀改变路线。导入时不会识别或自动移除航班，应在时间范围中选定自驾起止时刻。
 
 导入结果展示 CSV 记录总数、筛选后记录数、最终点数、线路段数和无效记录数。无效时间、坐标、选定时段内的无效精度或列数错误会计入无效记录；破损的 CSV 引号结构会停止导入并提示修复文件。
@@ -37,7 +39,7 @@ Worker 文件：`src/workers/travel-csv.worker.ts`。编辑器为每次导入创
 
 ```ts
 { type: "progress", percent: number }
-{ type: "complete", segments: [number, number][][], stats: { rows, matched, points, segments, invalid, from, to } }
+{ type: "complete", segments: [number, number][][], pointMeta: { time: number | null, altitude: number | null }[], stats: { rows, matched, points, segments, invalid, from, to } }
 { type: "error", error: string }
 ```
 

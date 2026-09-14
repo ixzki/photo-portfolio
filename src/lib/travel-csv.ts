@@ -1,4 +1,4 @@
-import type { Coordinate } from "./journey";
+import type { Coordinate, JourneyPointMetadata } from "./journey";
 
 export const MAX_IMPORTED_ROUTE_POINTS = 80_000;
 export const MAX_IMPORTED_ROUTE_BYTES = 3_000_000;
@@ -26,6 +26,7 @@ export interface TravelCsvStats {
 
 export interface TravelCsvResult {
   segments: Coordinate[][];
+  pointMeta: JourneyPointMetadata[];
   stats: TravelCsvStats;
 }
 
@@ -37,6 +38,7 @@ export type TravelCsvWorkerResponse =
 interface TimedPoint {
   time: number;
   position: Coordinate;
+  altitude?: number | null;
 }
 
 const NUMERIC = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
@@ -47,6 +49,7 @@ const aliases = {
   longitude: ["longitude", "lng", "lon", "long", "经度"],
   time: ["datatime", "timestamp", "time", "datetime", "date", "recordtime", "时间", "记录时间", "定位时间", "日期时间"],
   accuracy: ["accuracy", "horizontalaccuracy", "acc", "精度", "水平精度", "定位精度", "误差"],
+  altitude: ["altitude", "alt", "elevation", "ele", "height", "海拔", "海拔高度", "高度", "高程"],
 };
 
 /** A bounded, incremental RFC 4180 reader; quoted newlines/escaped quotes can span chunks. */
@@ -172,7 +175,7 @@ function validateOptions(options: TravelCsvOptions) {
 function findColumn(headers: string[], name: keyof typeof aliases, required = true) {
   const normalized = headers.map((header) => header.trim().toLowerCase().replace(/[\s_-]/g, ""));
   const candidates = normalized.flatMap((header, index) => aliases[name].includes(header) ? [index] : []);
-  const label = { latitude: "纬度 latitude", longitude: "经度 longitude", time: "时间 dataTime", accuracy: "定位精度 accuracy" }[name];
+  const label = { latitude: "纬度 latitude", longitude: "经度 longitude", time: "时间 dataTime", accuracy: "定位精度 accuracy", altitude: "海拔 altitude" }[name];
   if (candidates.length > 1) throw new Error(`CSV 含有多个${label}列，请保留其中一列后导入。`);
   if (!candidates.length && required) throw new Error(`CSV 缺少${label}列，请核对导出的字段。`);
   return candidates[0] ?? -1;
@@ -187,8 +190,15 @@ function distanceMeters([lat1, lng1]: Coordinate, [lat2, lng2]: Coordinate) {
 
 /** Sort chronologically, preserve missing-track gaps, and remove only consecutive duplicate positions. */
 export function splitTravelPoints(points: TimedPoint[], gapMinutes: number, gapKm: number): Coordinate[][] {
+  return splitTravelPointsWithMetadata(points, gapMinutes, gapKm).segments;
+}
+
+/** Keep recorded metadata beside each retained coordinate through sorting, deduplication and gaps. */
+export function splitTravelPointsWithMetadata(points: TimedPoint[], gapMinutes: number, gapKm: number) {
   const segments: Coordinate[][] = [];
+  const pointMeta: JourneyPointMetadata[] = [];
   let segment: Coordinate[] = [];
+  let segmentMeta: JourneyPointMetadata[] = [];
   let previous: TimedPoint | undefined;
   let total = 0;
   const append = () => {
@@ -196,28 +206,33 @@ export function splitTravelPoints(points: TimedPoint[], gapMinutes: number, gapK
       total += segment.length;
       if (total > MAX_IMPORTED_ROUTE_POINTS) throw new Error(`路线超过 ${MAX_IMPORTED_ROUTE_POINTS.toLocaleString("zh-CN")} 个点，请缩小导入的日期范围。`);
       segments.push(segment);
+      pointMeta.push(...segmentMeta);
     }
     segment = [];
+    segmentMeta = [];
   };
   for (const point of [...points].sort((a, b) => a.time - b.time)) {
     const position: Coordinate = point.position.map((value) => Math.round(value * 1_000_000) / 1_000_000) as Coordinate;
     if (previous && (point.time - previous.time > gapMinutes * 60 ||
         distanceMeters(previous.position, position) > gapKm * 1_000)) append();
     const last = segment.at(-1);
-    if (!last || last[0] !== position[0] || last[1] !== position[1]) segment.push(position);
+    if (!last || last[0] !== position[0] || last[1] !== position[1]) {
+      segment.push(position);
+      segmentMeta.push({ time: point.time, altitude: typeof point.altitude === "number" && Number.isFinite(point.altitude) ? point.altitude : null });
+    }
     if (segment.length >= 2 && total + segment.length > MAX_IMPORTED_ROUTE_POINTS) throw new Error(`路线超过 ${MAX_IMPORTED_ROUTE_POINTS.toLocaleString("zh-CN")} 个点，请缩小导入的日期范围。`);
     previous = { time: point.time, position };
   }
   append();
-  if (JSON.stringify(segments).length > MAX_IMPORTED_ROUTE_BYTES) throw new Error("路线数据超过 3 MB，请缩小导入的日期范围。");
-  return segments;
+  if (JSON.stringify({ segments, pointMeta }).length > MAX_IMPORTED_ROUTE_BYTES) throw new Error("路线数据超过 3 MB，请缩小导入的日期范围。");
+  return { segments, pointMeta };
 }
 
 /** Keeps only selected records in memory. Feed UTF-8 decoded chunks via push(), then call finish(). */
 export function createTravelCsvImporter(options: TravelCsvOptions) {
   const { start, end } = validateOptions(options);
   const points: TimedPoint[] = [];
-  let columns: { latitude: number; longitude: number; time: number; accuracy: number } | undefined;
+  let columns: { latitude: number; longitude: number; time: number; accuracy: number; altitude: number } | undefined;
   let columnCount = 0;
   let rows = 0;
   let invalid = 0;
@@ -228,6 +243,7 @@ export function createTravelCsvImporter(options: TravelCsvOptions) {
         longitude: findColumn(fields, "longitude"),
         time: findColumn(fields, "time"),
         accuracy: findColumn(fields, "accuracy", options.maxAccuracy > 0),
+        altitude: findColumn(fields, "altitude", false),
       };
       columnCount = fields.length;
       return;
@@ -260,19 +276,22 @@ export function createTravelCsvImporter(options: TravelCsvOptions) {
       }
       if (accuracy > options.maxAccuracy) return;
     }
-    points.push({ time, position: [lat, lng] });
+    const altitudeText = columns.altitude < 0 ? "" : fields[columns.altitude].trim();
+    const altitude = NUMERIC.test(altitudeText) && Number.isFinite(Number(altitudeText)) ? Number(altitudeText) : null;
+    points.push({ time, position: [lat, lng], altitude });
   });
   return {
     push: reader.push,
     finish(): TravelCsvResult {
       reader.finish();
       if (!columns) throw new Error("CSV 为空，请选择包含时间和经纬度的足迹导出文件。");
-      const segments = splitTravelPoints(points, options.gapMinutes, options.gapKm);
+      const { segments, pointMeta } = splitTravelPointsWithMetadata(points, options.gapMinutes, options.gapKm);
       if (!segments.length) {
         throw new Error(`所选时间内没有可用的连续轨迹，请调整时间范围、精度或断段阈值。${invalid ? ` 检测到 ${invalid} 行无效记录。` : ""}`);
       }
       return {
         segments,
+        pointMeta,
         stats: {
           rows, matched: points.length, points: segments.reduce((count, segment) => count + segment.length, 0),
           segments: segments.length, invalid,

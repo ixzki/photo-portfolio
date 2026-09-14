@@ -9,12 +9,14 @@ import JourneyMarkdown from "./JourneyMarkdown";
 import type { Coordinate, Journey, JourneyStop } from "@/lib/journey";
 import type { TravelDocument } from "@/lib/travel-content";
 import { validateTravelDocument } from "@/lib/travel-content";
-import { removeRouteSegment, sortJourneyStops, stopMarkdown } from "@/lib/admin-travel-geometry";
+import { parseTravelTimestamp, type TravelCsvResult } from "@/lib/travel-csv";
+import { appendDrawnRoute, removeRouteSegment, sortJourneyStops, stopMarkdown } from "@/lib/admin-travel-geometry";
+import { formatJourneyTime, getStopMetadata } from "@/lib/journey-metadata";
 import type { TravelMapMode } from "./AdminTravelMap";
 import styles from "./AdminTravelEditor.module.css";
 
 const EditorMap = dynamic(() => import("./AdminTravelMap"), { ssr: false, loading: () => <div className={styles.mapLoading}>地图加载中</div> });
-type Imported = { segments: Coordinate[][]; stats: { rows: number; matched: number; points: number; segments: number; invalid: number; from: string; to: string } };
+type Imported = TravelCsvResult;
 
 export default function AdminTravelEditor({ initial, readOnly = false }: { initial: TravelDocument; readOnly?: boolean }) {
   const router = useRouter();
@@ -41,6 +43,7 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
   const textarea = useRef<HTMLTextAreaElement>(null);
   const points = useMemo(() => draft.journey.segments.flat(), [draft.journey.segments]);
   const selected = draft.journey.stops.find((stop) => stop.id === selectedId);
+  const selectedMetadata = useMemo(() => selected ? getStopMetadata(draft.journey, selected) : null, [draft.journey, selected]);
   const locked = readOnly || saving;
 
   useEffect(() => () => worker.current?.terminate(), []);
@@ -100,7 +103,7 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
     if (drawing.length < 2) return;
     const start = points.length;
     const id = crypto.randomUUID();
-    updateJourney((journey) => ({ ...journey, segments: [...journey.segments, drawing], stops: [...journey.stops,
+    updateJourney((journey) => ({ ...appendDrawnRoute(journey, drawing), stops: [...journey.stops,
       { id, title: "新路段", position: drawing[0], routePointIndex: start, routeEndPointIndex: start + drawing.length - 1, markdown: "", paragraphs: [], images: [] }] }));
     setSelectedId(id); changeMode("browse"); setPreview(false);
   }
@@ -121,7 +124,7 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
   function applyImport() {
     if (!imported) return;
     if (draft.journey.segments.length && !window.confirm("应用 CSV 将替换当前轨迹，并清空关联点位、路段和正文。保存前不会影响数据库，确定应用？")) return;
-    updateJourney((journey) => ({ ...journey, segments: imported.segments, stops: [] }));
+    updateJourney((journey) => ({ ...journey, segments: imported.segments, pointMeta: imported.pointMeta, stops: [] }));
     setSelectedId(""); setImported(null); changeMode("browse");
     notice("轨迹已导入。点击“添加点位”或“选取路段”，然后在地图上选择位置。保存后写入数据库。");
   }
@@ -186,7 +189,7 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
         </div>
         {imported && <div className={styles.importResult} role="status">
           <p>已读取 {imported.stats.rows.toLocaleString()} 行 · 筛选 {imported.stats.matched.toLocaleString()} 条 · {imported.stats.points.toLocaleString()} 个轨迹点 · {imported.stats.segments} 条线路 · 跳过 {imported.stats.invalid} 条无效记录</p>
-          <p>{imported.stats.from} — {imported.stats.to}</p>
+          <p>{formatJourneyTime(parseTravelTimestamp(imported.stats.from))} — {formatJourneyTime(parseTravelTimestamp(imported.stats.to))}</p>
           <button type="button" onClick={applyImport}>应用导入轨迹</button>
         </div>}
       </details>
@@ -212,7 +215,7 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
           </details>
           <ol className={styles.stopList} aria-label="行程正文列表">{draft.journey.stops.map((stop, index) => <li key={stop.id}>
             <button type="button" aria-pressed={stop.id === selectedId} onClick={() => { setSelectedId(stop.id); changeMode("browse"); setPreview(false); }}>
-              <span className={styles.number}>{String(index + 1).padStart(2, "0")}</span><span>{stop.title || "未命名"}</span><span className={styles.kind}>{stop.routeEndPointIndex === undefined ? "点位" : "路段"}</span>
+              <span className={styles.number}>{String(index + 1).padStart(2, "0")}</span><span>{stop.title || "未命名"}</span><span className={styles.kind}>{stop.featured && <span className={styles.featuredBadge}>精选</span>}{stop.routeEndPointIndex === undefined ? "点位" : "路段"}</span>
             </button></li>)}</ol>
         </div>
         <div className={styles.contentColumn}>
@@ -222,6 +225,16 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
               updateJourney((journey) => ({ ...journey, stops: journey.stops.filter((stop) => stop.id !== selected.id) })); setSelectedId(""); changeMode("browse");
             }}>删除</button></div>
             <label>地点或路段名称<input className="admin-input" value={selected.title} onChange={(event) => updateStop(selected.id, { title: event.target.value })} /></label>
+            <div className={styles.featuredField}>
+              <label className={styles.featuredToggle}><input type="checkbox" checked={selected.featured === true} disabled={locked}
+                onChange={(event) => updateStop(selected.id, { featured: event.target.checked })} />设为全程地图精选点位</label>
+              <p className={styles.hint}>滚动全程地图到达这里时，显示名称、时间和海拔；路段显示时间与海拔范围。</p>
+              {selected.featured && <div className={styles.featuredPreview} aria-label="精选点位标注预览">
+                <strong>{selected.title || "未命名"}</strong>
+                <span>{selectedMetadata?.time || "暂无时间记录"}</span>
+                <span>{selectedMetadata?.altitude || "暂无海拔记录"}</span>
+              </div>}
+            </div>
             <div className={styles.anchorFields}>
               <label>{selected.routeEndPointIndex === undefined ? "轨迹点序号" : "起点序号"}<input aria-label="起点轨迹点序号" className="admin-input" type="number" min="1" max={points.length} value={(selected.routePointIndex ?? 0) + 1} onChange={(event) => { const index = Number(event.target.value) - 1; if (Number.isInteger(index) && points[index]) moveStop(selected.id, index); }} /></label>
               {selected.routeEndPointIndex !== undefined && <label>终点序号<input aria-label="终点轨迹点序号" className="admin-input" type="number" min={(selected.routePointIndex ?? 0) + 2} max={points.length} value={selected.routeEndPointIndex + 1} onChange={(event) => {
