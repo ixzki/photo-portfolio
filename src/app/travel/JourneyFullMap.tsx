@@ -110,6 +110,12 @@ export default function JourneyFullMap({ journey }: { journey: Journey }) {
     const update = () => {
       frame = 0;
       const box = root.getBoundingClientRect();
+      // The map stays underneath the journal; covered controls must leave keyboard navigation.
+      const bodyTop = root.nextElementSibling?.getBoundingClientRect().top ?? Infinity;
+      const navHeight = document.querySelector(".navbar")?.getBoundingClientRect().height ?? 0;
+      const covered = bodyTop <= navHeight;
+      root.inert = covered;
+      root.setAttribute("aria-hidden", String(covered));
       const progress = motion.matches ? 1 : fullRouteScrollProgress(box.top, box.height, viewport.clientHeight);
       const reading = fullRouteFrame(sequence, progress);
       root.dataset.fullRouteProgress = progress.toFixed(4);

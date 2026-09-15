@@ -6,6 +6,7 @@ import DetailMotionTrigger from "@/components/DetailMotionTrigger";
 import DetailProjectTitle from "@/components/DetailProjectTitle";
 import ImageLoader from "@/components/ImageLoader";
 import JourneyOutline from "../JourneyOutline";
+import JourneyCoverStats from "../JourneyCoverStats";
 import styles from "../travel.module.css";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ export default async function JourneyPage({ params }: { params: Promise<{ slug: 
         <ImageLoader {...route.cover} className="cover-image" priority
           sizes={`(max-aspect-ratio: ${route.cover.width}/${route.cover.height}) ${Math.ceil(route.cover.width / route.cover.height * 100)}vh, 100vw`}
           variant="cover" />
+        <JourneyCoverStats journey={route.journey} />
         <DetailProjectTitle title={route.journey.title} className={styles.coverCaption}>
           <JourneyOutline journey={route.journey} />
         </DetailProjectTitle>

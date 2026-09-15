@@ -11,10 +11,12 @@
 }
 .routeHit { cursor: pointer; }
 .fullRoute {
-  position: relative;
+  --full-route-height: 400svh;
+  position: sticky;
+  top: calc(100dvh - var(--full-route-height));
   z-index: 1;
   width: 100%;
-  height: 400svh;
+  height: var(--full-route-height);
   background: #f1f1f1;
   isolation: isolate;
   scroll-margin-top: 0;
@@ -41,7 +43,36 @@
   display: block;
   width: clamp(150px, 19vw, 300px);
   height: auto;
-  color: #000;
+  color: #fff;
+}
+.coverStats {
+  position: absolute;
+  bottom: var(--edge-gap);
+  left: var(--edge-gap);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: min(620px, 60vw);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition: opacity .42s ease, transform .62s cubic-bezier(.22, 1, .36, 1);
+  will-change: transform, opacity;
+}
+.coverStats:has(~ .coverCaption:global(.is-hidden)) { opacity: 0; transform: translate3d(-18px, 0, 0); pointer-events: none; }
+.coverStats p { width: fit-content; max-width: 100%; margin: 0; padding: .15em 4px; background: #000; }
+.coverMetrics { display: flex; align-items: baseline; gap: 8px; }
+.coverDistance, .coverDuration { font-size: var(--font-size); line-height: 1; font-weight: 700; white-space: nowrap; }
+.coverDates { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .5em; font-size: var(--small-size); line-height: 1.6; }
+.coverDates time { white-space: nowrap; }
+:global(body):has(.coverStats) > :global(.preview-notice) {
+  position: absolute !important;
+  top: calc(var(--nav-h) + 12px);
+  bottom: auto !important;
 }
 .journey {
   --mini-map-width: clamp(220px, 28vw, 360px);
@@ -50,6 +81,7 @@
   padding: 0 var(--edge-gap);
 }
 .detailPage .journey:global(.detail-content) {
+  z-index: 2;
   display: block;
   padding: 0 var(--edge-gap);
 }
@@ -195,8 +227,19 @@
 .stopNavList button:hover { text-decoration: underline; text-underline-offset: 4px; }
 .stopNavList button:focus-visible { outline: 1px solid #000; outline-offset: -1px; }
 @media (max-width: 1023px) and (min-width: 601px) {
-  .journal { padding-top: calc(var(--mini-map-height) + 36px); }
-  .stop { scroll-margin-top: calc(var(--nav-h) + var(--edge-gap) + var(--mini-map-height) + 16px); }
+  .journey {
+    --sidebar-height: calc(100dvh - var(--nav-h) - var(--edge-gap) * 3);
+    --mini-map-height: min(clamp(240px, 34dvh, 400px), calc(var(--sidebar-height) * .6));
+  }
+  .stopNav {
+    top: calc(var(--nav-h) + var(--mini-map-height) + var(--edge-gap) * 2);
+    left: var(--edge-gap);
+    right: auto;
+    width: var(--mini-map-width);
+    height: calc(var(--sidebar-height) - var(--mini-map-height));
+    align-items: flex-start;
+    background: transparent;
+  }
 }
 @media (min-width: 1024px) {
   .journey {
@@ -215,17 +258,14 @@
   .stopNavList button[aria-current="location"] { font-size: clamp(16px, 1.2vw, 20px); }
 }
 @media (max-width: 600px) {
-  .journey { --mini-map-width: clamp(138px, 40vw, 184px); --mini-map-height: clamp(128px, 21dvh, 176px); padding-inline: 16px; }
+  .journey { padding-inline: 16px; }
   .detailPage .journey:global(.detail-content) { padding-inline: 16px; }
+  .mapPane, .stopNav { display: none; }
   .coverOutline { width: 150px; }
-  .mapPane .map { --feather: 14px; }
-  .miniControls { top: 4px; right: 4px; }
-  .miniControls button { width: 24px; height: 24px; font-size: 16px; }
-  .stopNav { --stop-nav-row-space: 2px; --stop-nav-active-space: 6px; }
-  .stopNavList button { font-size: 10px; }
-  .stopNavList button[aria-current="location"] { font-size: 13px; }
-  .journal { margin-left: 0; max-width: none; padding-top: calc(var(--mini-map-height) + 36px); --journey-image-max-height: max(180px, calc(100svh - var(--nav-h) - var(--mini-map-height) - 60px)); }
-  .stop { scroll-margin-top: calc(var(--nav-h) + var(--edge-gap) + var(--mini-map-height) + 16px); }
+  .coverStats { max-width: calc(100vw - var(--edge-gap) * 2); gap: 6px; }
+  .coverStats .coverDates { max-width: calc(100vw - 150px - var(--edge-gap) * 3); }
+  .coverMetrics { gap: 6px; }
+  .journal { margin-left: 0; max-width: none; --journey-image-max-height: max(180px, calc(100svh - var(--nav-h) - 60px)); }
   .mapControls { left: 4px; top: 6px; }
   .mapControls button { width: 28px; height: 28px; font-size: 18px; }
   .fullRoute .mapControls { top: calc(var(--nav-h) + 8px); }
@@ -236,6 +276,7 @@
   .prose { font-size: 15px; line-height: 1.9; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .coverStats { transition: none; transform: none !important; }
   .markerButton::after, .mapPane, .stopNav, .stopNavList button { transition: none; }
-  .fullRoute { height: 100dvh; }
+  .fullRoute { --full-route-height: 100dvh; }
 }

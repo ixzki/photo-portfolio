@@ -25,7 +25,6 @@ export default function TravelJournal({ journey }: { journey: Journey }) {
   const [reading, setReading] = useState({ index: 0, distance: 0 });
   const activeId = journey.stops[reading.index]?.id ?? "";
   const articles = useRef(new Map<string, HTMLElement>());
-  const mapPane = useRef<HTMLElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const [contentVisible, setContentVisible] = useState(false);
 
@@ -48,10 +47,7 @@ export default function TravelJournal({ journey }: { journey: Journey }) {
       frame = 0;
       const nav = document.querySelector("nav")?.getBoundingClientRect().height ?? 48;
       setContentVisible((content.current?.getBoundingClientRect().top ?? Infinity) <= nav * 2);
-      const mapBottom = mapPane.current?.getBoundingClientRect().bottom ?? nav;
-      const baseReadingLine = window.matchMedia("(max-width: 1023px)").matches
-        ? mapBottom + 16
-        : nav + (window.innerHeight - nav) * 0.2;
+      const baseReadingLine = nav + (window.innerHeight - nav) * 0.2;
       const tops = journey.stops.map((stop) => articles.current.get(stop.id)?.getBoundingClientRect().top ?? Infinity);
       const last = articles.current.get(journey.stops.at(-1)?.id ?? "");
       // Compact final notes can share one viewport. Move the reading line towards
@@ -88,7 +84,7 @@ export default function TravelJournal({ journey }: { journey: Journey }) {
     <>
     <JourneyFullMap journey={journey} />
     <div className={`detail-content ${styles.journey}`} ref={content}>
-      <aside className={styles.mapPane} ref={mapPane} data-visible={contentVisible} aria-label="自驾路线地图">
+      <aside className={styles.mapPane} data-visible={contentVisible} aria-label="自驾路线地图">
         <RouteMap journey={journey} timeline={timeline} traveled={reading.distance} activeId={activeId} onSelect={goToStop} />
       </aside>
       <div className={styles.journal}>

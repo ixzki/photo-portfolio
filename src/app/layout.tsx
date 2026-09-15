@@ -64,7 +64,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className={`${jost.variable} ${notoSansSc.variable}`}>
         {(isReadOnlyPreview() || previewLabel) && (
-          <div role="status" style={{ position: "fixed", bottom: 12, left: 12, zIndex: 9999, maxWidth: "calc(100vw - 24px)", padding: "8px 12px", background: "#172019", color: "#fff", fontSize: 12, borderRadius: 6 }}>
+          <div className="preview-notice" role="status" style={{ position: "fixed", bottom: 12, left: 12, zIndex: 9999, maxWidth: "calc(100vw - 24px)", padding: "8px 12px", background: "#172019", color: "#fff", fontSize: 12, borderRadius: 6 }}>
             {isDemoPreview() ? "本地示例预览 · 非线上作品 · 只读" : isReadOnlyPreview() ? "只读预览 · 修改与删除已禁用" : previewLabel}
           </div>
         )}
