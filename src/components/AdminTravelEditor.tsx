@@ -12,6 +12,8 @@ import { validateTravelDocument } from "@/lib/travel-content";
 import { parseTravelTimestamp, type TravelCsvResult } from "@/lib/travel-csv";
 import { appendDrawnRoute, removeRouteSegment, sortJourneyStops, stopMarkdown } from "@/lib/admin-travel-geometry";
 import { formatJourneyTime, getStopMetadata } from "@/lib/journey-metadata";
+import { formatJourneyDuration, getJourneySummary } from "@/lib/journey-summary";
+import { metadataImportIssue, updateJourneyMetadata } from "@/lib/travel-metadata-import";
 import type { TravelMapMode } from "./AdminTravelMap";
 import styles from "./AdminTravelEditor.module.css";
 
@@ -44,6 +46,8 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
   const points = useMemo(() => draft.journey.segments.flat(), [draft.journey.segments]);
   const selected = draft.journey.stops.find((stop) => stop.id === selectedId);
   const selectedMetadata = useMemo(() => selected ? getStopMetadata(draft.journey, selected) : null, [draft.journey, selected]);
+  const importSummary = useMemo(() => imported ? getJourneySummary({ title: "", segments: imported.segments, pointMeta: imported.pointMeta, stops: [] }) : null, [imported]);
+  const metadataIssue = useMemo(() => imported ? metadataImportIssue({ segments: draft.journey.segments }, imported) : null, [draft.journey.segments, imported]);
   const locked = readOnly || saving;
 
   useEffect(() => () => worker.current?.terminate(), []);
@@ -128,6 +132,14 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
     setSelectedId(""); setImported(null); changeMode("browse");
     notice("轨迹已导入。点击“添加点位”或“选取路段”，然后在地图上选择位置。保存后写入数据库。");
   }
+  function applyMetadata() {
+    if (!imported || locked) return;
+    const issue = metadataImportIssue(draft.journey, imported);
+    if (issue) { notice(issue, true); return; }
+    updateJourney((journey) => updateJourneyMetadata(journey, imported));
+    setImported(null);
+    notice("时间和海拔已更新，路线、正文、图片及精选点位均保留。点击保存后写入数据库。");
+  }
   async function save() {
     if (locked) return;
     let document: TravelDocument;
@@ -190,6 +202,14 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
         {imported && <div className={styles.importResult} role="status">
           <p>已读取 {imported.stats.rows.toLocaleString()} 行 · 筛选 {imported.stats.matched.toLocaleString()} 条 · {imported.stats.points.toLocaleString()} 个轨迹点 · {imported.stats.segments} 条线路 · 跳过 {imported.stats.invalid} 条无效记录</p>
           <p>{formatJourneyTime(parseTravelTimestamp(imported.stats.from))} — {formatJourneyTime(parseTravelTimestamp(imported.stats.to))}</p>
+          {importSummary && <div aria-label="导入路线距离与时间">
+            <p>{new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(importSummary.distanceMeters / 1000)} KM · {formatJourneyDuration(importSummary.durationSeconds) || "暂无时间记录"}</p>
+            <p>实际记录：{formatJourneyTime(importSummary.startTime)} — {formatJourneyTime(importSummary.endTime)}</p>
+          </div>}
+          {draft.journey.segments.length > 0 && <>
+            <button type="button" onClick={applyMetadata} disabled={metadataIssue !== null} aria-describedby="metadata-import-status">仅更新时间和海拔（保留正文）</button>
+            <p id="metadata-import-status" className={styles.hint}>{metadataIssue || "轨迹逐点及分段一致，可仅更新记录，保留全部正文、图片、点位和精选选择。"}</p>
+          </>}
           <button type="button" onClick={applyImport}>应用导入轨迹</button>
         </div>}
       </details>
