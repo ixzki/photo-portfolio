@@ -30,8 +30,14 @@ export interface TravelCsvResult {
   stats: TravelCsvStats;
 }
 
+export interface TravelCsvTimeRange {
+  from: string;
+  to: string;
+}
+
 export type TravelCsvWorkerResponse =
   | { type: "progress"; percent: number }
+  | ({ type: "range" } & TravelCsvTimeRange)
   | ({ type: "complete" } & TravelCsvResult)
   | { type: "error"; error: string };
 
@@ -302,14 +308,64 @@ export function createTravelCsvImporter(options: TravelCsvOptions) {
   };
 }
 
+/** Scan without retaining GPS points, so a full export can be narrowed before importing. */
+export async function detectTravelCsvTimeRange(
+  file: Blob,
+  onProgress: (percent: number) => void = () => {},
+): Promise<TravelCsvTimeRange> {
+  let columns: { time: number; latitude: number; longitude: number } | undefined;
+  let columnCount = 0;
+  let start = Infinity;
+  let end = -Infinity;
+  const reader = createCsvReader((fields) => {
+    if (!columns) {
+      columns = {
+        time: findColumn(fields, "time"),
+        latitude: findColumn(fields, "latitude"),
+        longitude: findColumn(fields, "longitude"),
+      };
+      columnCount = fields.length;
+      return;
+    }
+    if (fields.length !== columnCount) return;
+    try {
+      const time = parseTravelTimestamp(fields[columns.time]);
+      const latitude = fields[columns.latitude].trim();
+      const longitude = fields[columns.longitude].trim();
+      if (!NUMERIC.test(latitude) || !NUMERIC.test(longitude) ||
+          Math.abs(Number(latitude)) > 85.051129 || Math.abs(Number(longitude)) > 180) return;
+      const localYear = new Date(time * 1000 + 8 * 3600_000).getUTCFullYear();
+      if (!Number.isFinite(localYear) || localYear < 1 || localYear > 9999) return;
+      start = Math.min(start, time);
+      end = Math.max(end, time);
+    } catch { /* Invalid rows must not widen the selected travel window. */ }
+  });
+  await readTravelCsvFile(file, reader, onProgress);
+  reader.finish();
+  if (!Number.isFinite(start)) throw new Error("CSV 中没有包含有效时间和经纬度的记录，无法自动识别起止时间。");
+  // Round outwards to whole seconds, keeping fractional-second endpoints inclusive.
+  const format = (seconds: number) => new Date(seconds * 1000 + 8 * 3600_000).toISOString().slice(0, 19);
+  return { from: format(Math.floor(start)), to: format(Math.ceil(end)) };
+}
+
 /** Run in a Web Worker; the raw export is never uploaded or decoded as one giant string. */
 export async function importTravelCsvFile(
   file: Blob,
   options: TravelCsvOptions,
   onProgress: (percent: number) => void = () => {},
 ): Promise<TravelCsvResult> {
-  if (!file.size) throw new Error("CSV 文件为空。");
   const importer = createTravelCsvImporter(options);
+  await readTravelCsvFile(file, importer, onProgress);
+  return importer.finish();
+}
+
+/** Share decoding and chunk handling between lightweight range scans and route imports. */
+async function readTravelCsvFile(
+  file: Blob,
+  readerTarget: { push: (chunk: string) => void },
+  onProgress: (percent: number) => void,
+) {
+  if (!file.size) throw new Error("CSV 文件为空。");
   const prefix = new Uint8Array(await file.slice(0, 3).arrayBuffer());
   const encoding = prefix[0] === 0xff && prefix[1] === 0xfe ? "utf-16le" :
     prefix[0] === 0xfe && prefix[1] === 0xff ? "utf-16be" : "utf-8";
@@ -325,7 +381,7 @@ export async function importTravelCsvFile(
       let text: string;
       try { text = decoder.decode(value, { stream: true }); }
       catch { throw new Error("CSV 编码无法识别，请将文件另存为 UTF-8 CSV 后重试。"); }
-      importer.push(text);
+      readerTarget.push(text);
       bytes += value.byteLength;
       const percent = Math.min(99, Math.floor(bytes / file.size * 100));
       if (percent !== reported) {
@@ -336,10 +392,8 @@ export async function importTravelCsvFile(
     let finalText: string;
     try { finalText = decoder.decode(); }
     catch { throw new Error("CSV 编码无法识别，请将文件另存为 UTF-8 CSV 后重试。"); }
-    importer.push(finalText);
-    const result = importer.finish();
+    readerTarget.push(finalText);
     onProgress(100);
-    return result;
   } finally {
     await reader.cancel().catch(() => {});
     reader.releaseLock();

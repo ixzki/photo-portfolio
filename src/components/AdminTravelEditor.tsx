@@ -9,7 +9,7 @@ import JourneyMarkdown from "./JourneyMarkdown";
 import type { Coordinate, Journey, JourneyStop } from "@/lib/journey";
 import type { TravelDocument } from "@/lib/travel-content";
 import { validateTravelDocument } from "@/lib/travel-content";
-import { parseTravelTimestamp, type TravelCsvResult } from "@/lib/travel-csv";
+import { parseTravelTimestamp, type TravelCsvResult, type TravelCsvWorkerResponse } from "@/lib/travel-csv";
 import { appendDrawnRoute, removeRouteSegment, sortJourneyStops, stopMarkdown } from "@/lib/admin-travel-geometry";
 import { formatJourneyTime, getStopMetadata } from "@/lib/journey-metadata";
 import { formatJourneyDuration, getJourneySummary } from "@/lib/journey-summary";
@@ -39,6 +39,7 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
   const [to, setTo] = useState("");
   const [maxAccuracy, setMaxAccuracy] = useState(100);
   const [importing, setImporting] = useState(false);
+  const [detectingRange, setDetectingRange] = useState(false);
   const [percent, setPercent] = useState(0);
   const [imported, setImported] = useState<Imported | null>(null);
   const worker = useRef<Worker | null>(null);
@@ -111,19 +112,26 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
       { id, title: "新路段", position: drawing[0], routePointIndex: start, routeEndPointIndex: start + drawing.length - 1, markdown: "", paragraphs: [], images: [] }] }));
     setSelectedId(id); changeMode("browse"); setPreview(false);
   }
-  function cancelImport() { worker.current?.terminate(); worker.current = null; setImporting(false); }
-  function importCsv() {
-    if (!file || locked) return;
+  function cancelImport() { worker.current?.terminate(); worker.current = null; setImporting(false); setDetectingRange(false); }
+  function readCsv(task: "range" | "import", selectedFile = file) {
+    if (!selectedFile || locked) return;
     cancelImport(); setImported(null); setImporting(true); setPercent(0); setMessage("");
+    setDetectingRange(task === "range");
+    if (task === "range") { setFrom(""); setTo(""); }
     const nextWorker = new Worker(new URL("../workers/travel-csv.worker.ts", import.meta.url));
     worker.current = nextWorker;
-    nextWorker.onmessage = ({ data }) => {
+    nextWorker.onmessage = ({ data }: MessageEvent<TravelCsvWorkerResponse>) => {
+      if (worker.current !== nextWorker) return;
       if (data.type === "progress") setPercent(data.percent);
-      if (data.type === "complete") { setImported(data); setImporting(false); nextWorker.terminate(); worker.current = null; }
-      if (data.type === "error") { notice(data.error, true); setImporting(false); nextWorker.terminate(); worker.current = null; }
+      if (data.type === "range") {
+        setFrom(data.from); setTo(data.to); cancelImport();
+        notice(data.from === data.to ? "CSV 只记录了一个时间，无法生成连续行程，请检查文件。" : "已自动填入 CSV 起止时间（北京时间），可调整范围后读取轨迹。", data.from === data.to);
+      }
+      if (data.type === "complete") { setImported(data); cancelImport(); }
+      if (data.type === "error") { notice(data.error, true); cancelImport(); }
     };
-    nextWorker.onerror = () => { notice("CSV 读取失败，请检查文件格式后重试。", true); cancelImport(); };
-    nextWorker.postMessage({ file, options: { from, to, maxAccuracy, gapMinutes: 60, gapKm: 5 } });
+    nextWorker.onerror = () => { if (worker.current !== nextWorker) return; notice("CSV 读取失败，请检查文件格式后重试。", true); cancelImport(); };
+    nextWorker.postMessage({ task, file: selectedFile, options: { from, to, maxAccuracy, gapMinutes: 60, gapKm: 5 } });
   }
   function applyImport() {
     if (!imported) return;
@@ -189,15 +197,20 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
       </div></details>
       <details className={styles.details} open={!initial.journey.segments.length || undefined}><summary>导入 CSV</summary>
         <div className={styles.importFields}>
-          <label className={styles.fileField}>足迹文件<input type="file" accept=".csv,text/csv" onChange={(event) => { cancelImport(); setFile(event.target.files?.[0] ?? null); setImported(null); }} /></label>
-          <label>开始时间（北京时间）<input type="datetime-local" step="1" className="admin-input" value={from} onChange={(event) => { cancelImport(); setFrom(event.target.value); setImported(null); }} /></label>
-          <label>结束时间（北京时间）<input type="datetime-local" step="1" className="admin-input" value={to} onChange={(event) => { cancelImport(); setTo(event.target.value); setImported(null); }} /></label>
-          <label>最大定位误差 / 米<input className="admin-input" type="number" min="0" step="10" value={maxAccuracy} onChange={(event) => { cancelImport(); setMaxAccuracy(Number(event.target.value)); setImported(null); }} /></label>
+          <label className={styles.fileField}>足迹文件<input type="file" accept=".csv,text/csv" onChange={(event) => {
+            const selectedFile = event.target.files?.[0] ?? null;
+            cancelImport(); setFile(selectedFile); setImported(null); setFrom(""); setTo(""); setMessage("");
+            if (selectedFile) readCsv("range", selectedFile);
+          }} /></label>
+          <label>开始时间（北京时间）<input type="datetime-local" step="1" disabled={detectingRange} className="admin-input" value={from} onChange={(event) => { cancelImport(); setFrom(event.target.value); setImported(null); }} /></label>
+          <label>结束时间（北京时间）<input type="datetime-local" step="1" disabled={detectingRange} className="admin-input" value={to} onChange={(event) => { cancelImport(); setTo(event.target.value); setImported(null); }} /></label>
+          <label>最大定位误差 / 米<input className="admin-input" type="number" disabled={detectingRange} min="0" step="10" value={maxAccuracy} onChange={(event) => { cancelImport(); setMaxAccuracy(Number(event.target.value)); setImported(null); }} /></label>
         </div>
-        <p className={styles.hint}>使用 WGS84 经纬度；请选择这次旅行的起止时间，误差填 0 不筛选。超过 1 小时或 5 公里的采样间隔会断开，避免连出不存在的道路。</p>
+        <p className={styles.hint}>选择 CSV 后自动识别起止时间（北京时间），可手动缩小到本次旅行。使用 WGS84 经纬度，误差填 0 不筛选。超过 1 小时或 5 公里的采样间隔会断开，避免连出不存在的道路。</p>
         <div className={styles.toolbar}>
-          <button type="button" onClick={importCsv} disabled={!file || !from || !to || importing}>读取 CSV</button>
-          {importing && <><span role="status">读取中 {Math.round(percent)}%</span><button type="button" onClick={cancelImport}>取消读取</button></>}
+          <button type="button" onClick={() => readCsv("import")} disabled={!file || !from || !to || importing}>读取 CSV</button>
+          <button type="button" onClick={() => readCsv("range")} disabled={!file || importing}>重新识别时间</button>
+          {importing && <><span role="status">{detectingRange ? "识别时间中" : "读取中"} {Math.round(percent)}%</span><button type="button" onClick={cancelImport}>取消读取</button></>}
         </div>
         {imported && <div className={styles.importResult} role="status">
           <p>已读取 {imported.stats.rows.toLocaleString()} 行 · 筛选 {imported.stats.matched.toLocaleString()} 条 · {imported.stats.points.toLocaleString()} 个轨迹点 · {imported.stats.segments} 条线路 · 跳过 {imported.stats.invalid} 条无效记录</p>

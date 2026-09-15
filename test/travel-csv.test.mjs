@@ -1,13 +1,54 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  createCsvReader, createTravelCsvImporter, importTravelCsvFile,
+  createCsvReader, createTravelCsvImporter, detectTravelCsvTimeRange, importTravelCsvFile,
   parseTravelTimestamp, splitTravelPoints, MAX_IMPORTED_ROUTE_POINTS,
 } from "../src/lib/travel-csv.ts";
 
 const options = {
   from: "2026-06-24T08:00", to: "2026-06-29T23:59", maxAccuracy: 0, gapMinutes: 60, gapKm: 5,
 };
+
+test("automatic time range scans unsorted valid GPS records in Beijing time before accuracy filtering", async () => {
+  const csv = `dataTime,latitude,longitude,accuracy,note
+2026-06-28T06:16:34Z,43,81,999,"last, valid"
+invalid,43,81,5,
+1999-01-01T00:00,999,81,5,
+2099-01-01T00:00,43,,5,
+2026-06-24T08:02:36,43,81,5,"first
+valid"
+2026-06-25T00:00,43,81,5,
+`;
+  const progress = [];
+  assert.deepEqual(await detectTravelCsvTimeRange(new Blob([csv]), (value) => progress.push(value)), {
+    from: "2026-06-24T08:02:36", to: "2026-06-28T14:16:34",
+  });
+  assert.equal(progress[0], 0);
+  assert.equal(progress.at(-1), 100);
+});
+
+test("automatic range handles UTF-16 Chinese fields and inclusive fractional Unix endpoints", async () => {
+  const start = Date.parse("2025-09-29T03:44:33.123Z");
+  const end = start + 60_750;
+  const csv = `\ufeff记录时间,纬度,经度\r\n${end},43.001,81\r\n${start / 1000},43,81\r\n`;
+  const file = new Blob([Buffer.from(csv, "utf16le")]);
+  const range = await detectTravelCsvTimeRange(file);
+  assert.deepEqual(range, { from: "2025-09-29T11:44:33", to: "2025-09-29T11:45:34" });
+  const imported = await importTravelCsvFile(file, { ...options, ...range });
+  assert.equal(imported.stats.matched, 2);
+  assert.equal(imported.pointMeta[0].time, start / 1000);
+  assert.equal(imported.pointMeta[1].time, end / 1000);
+});
+
+test("automatic range reports malformed and missing data, without inventing a duration for one timestamp", async () => {
+  await assert.rejects(detectTravelCsvTimeRange(new Blob([])), /为空/);
+  await assert.rejects(detectTravelCsvTimeRange(new Blob(["lat,lon\n43,81"])), /缺少时间/);
+  await assert.rejects(detectTravelCsvTimeRange(new Blob(["time,lat,lon\ninvalid,43,81\n2099-01-01,999,81"])), /没有包含有效时间/);
+  await assert.rejects(detectTravelCsvTimeRange(new Blob([new Uint8Array([0xff, 0xff])])), /UTF-8/);
+  await assert.rejects(detectTravelCsvTimeRange(new Blob(['time,lat,lon\n"broken'])), /引号/);
+  const range = await detectTravelCsvTimeRange(new Blob(["time,lat,lon\n2026-06-24T08:00,43,81"]));
+  assert.equal(range.from, range.to);
+});
 
 test("CSV quote escaping, BOM and multiline fields survive every chunk boundary", () => {
   const csv = '\ufefftime,latitude,longitude,note\r\n"2026-06-24T08:00",43,81,"a,""b""\r\nc"\r\n2026-06-24T08:01,43.001,81,""';
