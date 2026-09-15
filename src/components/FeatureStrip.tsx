@@ -26,7 +26,7 @@ export default function FeatureStrip({ features }: { features: FeatureItem[] }) 
 
   return (
     <section className="view home-page is-active" id="home" data-view="home" aria-label="首页精选">
-      <div className="features" ref={containerRef}>
+      <div className="features" ref={containerRef} data-page-scroll-axis="x">
         {features.map((item) => {
           const imgUrl = item.type === "project" ? item.projectCoverUrl! : item.imageUrl!;
           const title = item.type === "project" ? item.projectTitle! : item.imageTitle!;

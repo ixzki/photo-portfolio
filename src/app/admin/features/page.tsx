@@ -194,27 +194,19 @@ export default function AdminFeaturesPage() {
   return (
     <div>
       <div className="admin-page-header">
-        <h1 className="admin-heading" style={{ margin: 0 }}>首页精选</h1>
-        <div className="admin-actions">
-          {message
-            ? <span className={`admin-message${message.includes("失败") || message.includes("请") ? " is-error" : ""}`}>{message}</span>
-            : dirty && <span className="admin-message">有未保存更改</span>}
-          <button type="button" onClick={handleSave} disabled={saving || !dirty} className="admin-btn">
-            {saving ? "保存中..." : "保存精选"}
-          </button>
-          <button type="button" onClick={() => setShowAdd(!showAdd)} className="admin-btn">
-            {showAdd ? "取消" : "+ 添加精选"}
-          </button>
-        </div>
+        <h1 className="admin-heading">首页精选</h1>
+        <button type="button" onClick={() => setShowAdd(!showAdd)} className="admin-btn-secondary" aria-expanded={showAdd} aria-controls="add-feature-panel">
+          {showAdd ? "收起添加" : "添加精选"}
+        </button>
       </div>
 
       {showAdd && (
-        <div className="admin-panel">
-          <h3>新增首页项</h3>
+        <section className="admin-panel" id="add-feature-panel" aria-labelledby="add-feature-heading">
+          <h2 className="admin-subheading" id="add-feature-heading">添加精选</h2>
           <div className="admin-segmented">
             <label>
               <input type="radio" checked={addType === "project"} onChange={() => setAddType("project")} />
-              关联项目
+              关联作品
             </label>
             <label>
               <input type="radio" checked={addType === "image"} onChange={() => setAddType("image")} />
@@ -226,8 +218,9 @@ export default function AdminFeaturesPage() {
             {addType === "project" ? (
               <>
                 <div className="admin-form-group">
-                  <label>选择项目</label>
+                  <label htmlFor="feature-project">选择作品</label>
                   <select
+                    id="feature-project"
                     className="admin-input"
                     value={newFeature.projectSlug}
                     onChange={(event) => handleProjectSelect(event.target.value)}
@@ -263,8 +256,9 @@ export default function AdminFeaturesPage() {
                   />
                 </div>
                 <div className="admin-form-group">
-                  <label>显示标题</label>
+                  <label htmlFor="feature-title">显示标题</label>
                   <input
+                    id="feature-title"
                     className="admin-input"
                     value={newFeature.imageTitle}
                     onChange={(event) => setNewFeature((current) => ({ ...current, imageTitle: event.target.value }))}
@@ -273,11 +267,19 @@ export default function AdminFeaturesPage() {
                 </div>
               </>
             )}
-            <button type="submit" className="admin-btn">确认添加</button>
+            <div className="admin-toolbar">
+              <button type="submit" className="admin-btn">添加到精选列表</button>
+              <button type="button" className="admin-btn-secondary" onClick={() => setShowAdd(false)}>取消</button>
+            </div>
           </form>
-        </div>
+        </section>
       )}
 
+      <section className="admin-panel" aria-labelledby="feature-list-heading">
+        <div className="admin-section-header">
+          <h2 className="admin-subheading" id="feature-list-heading">展示顺序</h2>
+          <span className="admin-field-hint">{features.length} 项 · 拖动排序</span>
+        </div>
       <div className="admin-feature-list">
         {features.map((item, index) => {
           const project = item.type === "project" && item.projectSlug ? projectBySlug.get(item.projectSlug) : null;
@@ -303,7 +305,7 @@ export default function AdminFeaturesPage() {
               >
                 ::
               </span>
-              <span className="admin-muted">#{index}</span>
+              <span className="admin-muted">{String(index + 1).padStart(2, "0")}</span>
               <AdminPreviewImage
                 src={item.type === "project" ? item.projectCoverUrl || "" : item.imageUrl || ""}
                 alt=""
@@ -314,7 +316,7 @@ export default function AdminFeaturesPage() {
               <div className="admin-feature-card-body">
                 <strong>{item.type === "project" ? item.projectTitle : item.imageTitle}</strong>
                 <div>
-                  <span className="admin-status-badge is-featured">{item.type === "project" ? "关联项目" : "单张图片"}</span>
+                  <span className="admin-status-badge is-featured">{item.type === "project" ? "关联作品" : "单张图片"}</span>
                   {project && (
                     <span className={`admin-status-badge ${project.visible ? "is-live" : "is-draft"}`}>
                       {project.visible ? "公开可见" : "草稿不公开"}
@@ -327,7 +329,16 @@ export default function AdminFeaturesPage() {
           );
         })}
       </div>
-      <p className="admin-muted" style={{ marginTop: 12 }}>拖动精选项即可调整首页从左到右的展示顺序。</p>
+        {features.length === 0 && <p className="admin-empty">暂无首页精选，点击“添加精选”选择作品或图片。</p>}
+      </section>
+      <div className="admin-save-bar">
+        <span role="status" aria-live="polite" className={`admin-message${message.includes("失败") || message.includes("请") ? " is-error" : ""}`}>
+          {message || (dirty ? "有未保存更改" : "更改后保存，即可更新首页")}
+        </span>
+        <button type="button" onClick={handleSave} disabled={saving || !dirty} className="admin-btn">
+          {saving ? "保存中..." : "保存精选"}
+        </button>
+      </div>
     </div>
   );
 }

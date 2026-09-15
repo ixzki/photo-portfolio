@@ -36,7 +36,7 @@ export default function AboutPageClient({ settings }: { settings: Settings }) {
           variant="avatar"
         />
       </div>
-      <div className="about-text-container">
+      <div className="about-text-container" data-page-scroll-axis="y">
         <div className="about-text">
           {(settings.aboutText || "").split("\n").filter(Boolean).map((p, i) => (
             <p key={i}>{p}</p>

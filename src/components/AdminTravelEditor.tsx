@@ -179,16 +179,16 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
     : mode === "draw" ? "依次点击地图绘制线路；点击“完成线路”添加正文。" : mode === "browse" ? "拖动地图查看路线；选中点位后可拖动调整。正文按行程顺序排列。" : "点击地图重新选择位置，或在右侧输入轨迹点序号。";
 
   return <div className={styles.editor}>
-    <div className={styles.header}><h1 className="admin-heading">{initial.revision ? "编辑旅行" : "新建旅行"}</h1><Link href="/admin/travel">旅行管理</Link></div>
+    <div className={styles.header}><div><h1 className="admin-heading">{initial.revision ? "编辑旅行" : "新建旅行"}</h1><div className={styles.status}><span className={`admin-status-badge ${initial.visible ? "is-live" : "is-draft"}`}>{initial.visible ? "已发布" : "草稿"}</span><span>{draft.journey.stops.length} 段正文 / {points.length.toLocaleString()} 个轨迹点</span></div></div><Link href="/admin/travel" className="admin-btn-sm">旅行管理</Link></div>
     {readOnly && <p role="status">当前为只读预览，不能保存旅行内容。</p>}
     <fieldset disabled={locked} className={styles.fields}>
-      <div className={styles.settings}>
+      <section className={styles.panel}><h2>旅行信息</h2><div className={styles.settings}>
         <label>标题<input className="admin-input" value={draft.journey.title} onChange={(event) => updateJourney((journey) => ({ ...journey, title: event.target.value }))} /></label>
         <label>网址标识<input className="admin-input" value={draft.slug} onChange={(event) => update((value) => ({ ...value, slug: event.target.value }))} placeholder="xinjiang-2026" /></label>
         <label>路线灰度<select className="admin-input" value={draft.shade} onChange={(event) => update((value) => ({ ...value, shade: event.target.value }))}>
           {Array.from(new Set([draft.shade, "#333333", "#626262", "#888888", "#aaaaaa"])).map((shade) => <option key={shade} value={shade}>{shade === "#333333" ? "深灰" : shade === "#626262" ? "灰色" : shade === "#888888" ? "中灰" : shade === "#aaaaaa" ? "浅灰" : shade}</option>)}
         </select></label>
-      </div>
+      </div></section>
       <details className={styles.details}><summary>首屏大图</summary><div className={styles.coverFields}>
         <AdminImageField label="封面图片" value={draft.cover.src} onChange={(src) => update((value) => ({ ...value, cover: { ...value.cover, src } }))}
           onSize={(width, height) => update((value) => ({ ...value, cover: { ...value.cover, width, height } }))}
@@ -228,6 +228,7 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
       </details>
       <div className={styles.workspace}>
         <div className={styles.mapColumn}>
+          <h2 className={styles.workspaceTitle}>路线与点位</h2>
           <div className={styles.toolbar} role="group" aria-label="地图编辑工具">
             <button type="button" aria-pressed={mode === "browse"} onClick={() => changeMode("browse")}>浏览</button>
             <button type="button" aria-pressed={mode === "point"} disabled={!points.length} onClick={() => changeMode("point")}>添加点位</button>
@@ -258,7 +259,7 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
               updateJourney((journey) => ({ ...journey, stops: journey.stops.filter((stop) => stop.id !== selected.id) })); setSelectedId(""); changeMode("browse");
             }}>删除</button></div>
             <label>地点或路段名称<input className="admin-input" value={selected.title} onChange={(event) => updateStop(selected.id, { title: event.target.value })} /></label>
-            <div className={styles.featuredField}>
+            <details className={styles.locationDetails}><summary>点位与精选设置</summary><div className={styles.featuredField}>
               <label className={styles.featuredToggle}><input type="checkbox" checked={selected.featured === true} disabled={locked}
                 onChange={(event) => updateStop(selected.id, { featured: event.target.checked })} />设为全程地图精选点位</label>
               <p className={styles.hint}>滚动全程地图到达这里时，显示名称、时间和海拔；路段显示时间与海拔范围。</p>
@@ -280,6 +281,7 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
               {selected.routeEndPointIndex !== undefined && <button type="button" onClick={() => changeMode("end")}>在地图上选终点</button>}
             </div>
             <p className={styles.hint}>{selected.position.map((value) => value.toFixed(6)).join(", ")}</p>
+            </details>
             <div className={styles.toolbar} role="group" aria-label="正文编辑模式">
               <button type="button" aria-pressed={!preview} onClick={() => setPreview(false)}>Markdown</button><button type="button" aria-pressed={preview} onClick={() => setPreview(true)}>预览</button>
               <button type="button" onClick={() => setInsertImage((value) => !value)}>插入图片</button>
@@ -296,12 +298,12 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
           </> : <div className={styles.empty}>在地图上添加点位或选取路段，即可为它编写正文。</div>}
         </div>
       </div>
+      {draft.revision > 0 && <details className={styles.details}><summary>更多设置</summary><button className={styles.danger} type="button" disabled={locked} onClick={deleteTravel}>删除旅行</button></details>}
     </fieldset>
     <div className={styles.saveBar}>
       <label className={styles.publish}><input type="checkbox" disabled={locked} checked={draft.visible} onChange={(event) => update((value) => ({ ...value, visible: event.target.checked }))} />公开展示</label>
       <span>{dirty ? "有未保存的更改" : draft.revision ? "已保存" : "尚未保存"}</span>
       <div className={styles.saveActions}>
-        {draft.revision > 0 && <button type="button" disabled={locked} onClick={deleteTravel}>删除旅行</button>}
         {initial.visible && initial.revision > 0 && <Link href={`/travel/${initial.slug}`} target="_blank" rel="noopener noreferrer">查看页面 ↗</Link>}
         <button type="button" className={styles.saveButton} disabled={locked || importing} onClick={save}>{saving ? "保存中…" : draft.visible ? "保存并发布" : "保存草稿"}</button>
       </div>

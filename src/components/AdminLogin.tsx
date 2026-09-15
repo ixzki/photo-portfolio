@@ -32,8 +32,9 @@ export default function AdminLogin() {
       <form onSubmit={handleSubmit} className="admin-login-panel">
         <h1 className="admin-heading">后台登录</h1>
         <div className="admin-form-group">
-          <label>管理密码</label>
+          <label htmlFor="admin-password">管理密码</label>
           <input
+            id="admin-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="admin-input"

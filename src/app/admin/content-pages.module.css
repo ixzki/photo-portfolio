@@ -1,0 +1,102 @@
+.contactList {
+  display: grid;
+  gap: 12px;
+}
+
+.contactRow {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.45fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.contactRow > :global(.admin-form-group) {
+  margin: 0;
+}
+
+.imageFields {
+  display: grid;
+  gap: 24px;
+}
+
+.imageFields > :global(.admin-form-group) {
+  margin: 0;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.imageFields > :global(.admin-form-group):last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.visibility.visibility {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+}
+
+.visibility input {
+  width: auto;
+}
+
+.mediaSearch {
+  width: min(100%, 340px);
+}
+
+.mediaHeader {
+  flex-wrap: wrap;
+}
+
+.mediaAdd {
+  margin-bottom: 24px;
+}
+
+.mediaTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.mediaEdit {
+  border-top: 1px solid #e5e5e5;
+  padding-top: 12px;
+}
+
+.mediaEdit summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.mediaEdit[open] summary {
+  margin-bottom: 16px;
+}
+
+.mediaEdit :global(.admin-form-group) {
+  margin-bottom: 12px;
+}
+
+.mediaActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+}
+
+@media (max-width: 600px) {
+  .contactRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .contactRow > :global(.admin-form-group):first-child {
+    grid-column: 1 / -1;
+  }
+
+  .mediaSearch {
+    width: 100%;
+  }
+}

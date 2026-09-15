@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { invalidatePublicJourneys } from "@/lib/public-cache-invalidation";
 import { requireAdmin } from "@/lib/auth";
 import { isReadOnlyPreview } from "@/lib/preview-config.mjs";
 import { MAX_TRAVEL_BYTES, TravelValidationError, validateTravelDocument } from "@/lib/travel-content";
@@ -24,12 +24,6 @@ function assertWrite(request: NextRequest) {
   assertTravelWriteRequest(request);
 }
 
-function refreshTravel() {
-  revalidatePath("/travel");
-  revalidatePath("/travel/[slug]", "page");
-  revalidatePath("/admin/travel");
-}
-
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin();
   if (auth) return auth;
@@ -51,7 +45,7 @@ async function save(request: NextRequest, mode: "create" | "update") {
     assertWrite(request);
     const document = validateTravelDocument(await readTravelJson(request, MAX_TRAVEL_BYTES));
     const saved = await (mode === "create" ? createTravel(document) : updateTravel(document));
-    refreshTravel();
+    invalidatePublicJourneys();
     return NextResponse.json(saved, { status: mode === "create" ? 201 : 200, headers: privateHeaders });
   } catch (error) { return failure(error); }
 }
@@ -70,7 +64,7 @@ export async function DELETE(request: NextRequest) {
       throw new TravelRequestError("请提供有效的旅行 ID 和版本号。", 400);
     }
     await deleteTravel(id, Number(version));
-    refreshTravel();
+    invalidatePublicJourneys();
     return NextResponse.json({ ok: true }, { headers: privateHeaders });
   } catch (error) { return failure(error); }
 }

@@ -1,0 +1,46 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  color: #000;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 260ms ease 100ms, visibility 0s linear 360ms;
+  /* Also releases the cover if the initial JavaScript bundle fails to load. */
+  animation: release-cover 0s 6.4s forwards;
+}
+.wordmark {
+  position: relative;
+  font-family: var(--font-jost), "Helvetica Neue", Arial, sans-serif;
+  font-size: clamp(30px, 2.67vw, 40px);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -.035em;
+  white-space: nowrap;
+  transform: translateY(-3vh);
+}
+.outline {
+  color: transparent;
+  -webkit-text-stroke: .75px #000;
+}
+.ink {
+  position: absolute;
+  inset: 0;
+  color: #000;
+  clip-path: inset(68% 0 0);
+  animation: fill-wordmark 1.35s cubic-bezier(.45, 0, .55, 1) infinite alternate;
+}
+.screen[data-phase="leaving"] { opacity: 0; visibility: hidden; }
+.screen[data-phase="leaving"] .ink { animation: none; clip-path: inset(0); transition: clip-path 100ms ease; }
+@keyframes fill-wordmark {
+  from { clip-path: polygon(0 76%, 22% 70%, 48% 78%, 74% 69%, 100% 74%, 100% 100%, 0 100%); }
+  to { clip-path: polygon(0 24%, 26% 17%, 53% 26%, 78% 18%, 100% 23%, 100% 100%, 0 100%); }
+}
+@keyframes release-cover { to { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .screen { transition: opacity 80ms linear, visibility 0s linear 80ms; }
+  .ink { animation: none; clip-path: inset(0); }
+}

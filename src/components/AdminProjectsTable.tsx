@@ -78,14 +78,16 @@ export default function AdminProjectsTable({
 
   return (
     <div>
-      <div className="admin-actions" style={{ marginBottom: 12 }}>
+      <div className="admin-toolbar">
+        <span className="admin-muted">{items.length} 个作品</span><div className="admin-actions">
         {message
           ? <span className={`admin-message${message.includes("失败") ? " is-error" : ""}`}>{message}</span>
           : dirty && <span className="admin-message">有未保存更改</span>}
         <button type="button" className="admin-btn-sm" disabled={saving || !dirty} onClick={() => void persistOrder(items)}>
           {saving ? "保存中..." : "保存排序"}
         </button>
-      </div>
+      </div></div>
+      <div className="admin-table-wrap" tabIndex={0} role="region" aria-label="作品列表，可左右滚动">
       <table className="admin-table">
         <thead>
           <tr>
@@ -152,6 +154,7 @@ export default function AdminProjectsTable({
           ))}
         </tbody>
       </table>
+      </div>
       <p className="admin-muted" style={{ marginTop: 10 }}>拖动表格行即可调整作品顺序。</p>
     </div>
   );

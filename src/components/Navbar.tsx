@@ -3,11 +3,15 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSiteLoading } from "./SiteLoading";
 
 export default function Navbar({ siteName }: { siteName: string }) {
   const pathname = usePathname();
+  const { startNavigation, setSiteName } = useSiteLoading();
   const [scrolled, setScrolled] = useState(false);
   const isDetail = pathname.startsWith("/works/") || pathname.startsWith("/travel/");
+
+  useEffect(() => { setSiteName(siteName); }, [setSiteName, siteName]);
 
   useEffect(() => {
     if (!isDetail) {
@@ -58,6 +62,7 @@ export default function Navbar({ siteName }: { siteName: string }) {
         <Link
           className={`menu-item hover-invert ${isTravel ? "is-active" : ""}`}
           href="/travel"
+          onNavigate={() => startNavigation("/travel")}
           data-nav="travel"
           aria-current={isTravel ? "page" : undefined}
         >

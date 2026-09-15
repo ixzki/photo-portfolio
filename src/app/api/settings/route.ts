@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { invalidatePublicSettings } from "@/lib/public-cache-invalidation";
 import { getSettings, updateSettings } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+
+const privateHeaders = { "Cache-Control": "private, no-store" };
 
 export async function GET() {
   const unauthorized = await requireAdmin();
   if (unauthorized) return unauthorized;
 
-  return NextResponse.json(await getSettings());
+  return NextResponse.json(await getSettings(), { headers: privateHeaders });
 }
 
 export async function PUT(request: Request) {
@@ -16,6 +18,6 @@ export async function PUT(request: Request) {
 
   const data = await request.json();
   const settings = await updateSettings(data);
-  revalidatePath("/", "layout");
-  return NextResponse.json(settings);
+  invalidatePublicSettings();
+  return NextResponse.json(settings, { headers: privateHeaders });
 }

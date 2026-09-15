@@ -20,7 +20,13 @@
 .markdown ul, .markdown ol { padding-left: 1.6em; }
 .markdown li + li { margin-top: .3em; }
 .markdown a { text-decoration: underline; text-underline-offset: 4px; }
-.markdown a:hover { color: #fff; background: #000; }
+.markdown a:not(:has(img)) {
+  padding: .15em 4px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition: color .28s ease, background-color .28s ease;
+}
+.markdown a:not(:has(img)):is(:hover, :focus-visible) { color: #fff; background: #000; }
 .markdown a:focus-visible { outline: 1px solid currentColor; outline-offset: 3px; }
 .markdown blockquote { margin-left: 0; padding-left: 1em; border-left: 1px solid #000; }
 .markdown blockquote p:last-child { margin-bottom: 0; }

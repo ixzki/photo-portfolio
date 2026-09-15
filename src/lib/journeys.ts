@@ -2,7 +2,13 @@ import { cache } from "react";
 import type { Journey } from "./journey";
 import { isDemoPreview } from "./preview-config.mjs";
 import { initialTravel } from "./travel-seed.mjs";
-import { isTravelTableMissing, readPublishedTravels } from "./travel-db";
+import {
+  isTravelTableMissing, readPublishedTravels, readPublishedTravelSlugs,
+  readPublishedTravelOverview, type PublishedJourneyOverview,
+} from "./travel-db";
+import { readPublicCached } from "./public-cache";
+
+export type { PublishedJourneyOverview } from "./travel-db";
 
 export interface PublishedJourney {
   slug: string;
@@ -29,5 +35,40 @@ async function readPublished(slug?: string): Promise<PublishedJourney[]> {
   }
 }
 
-export const getPublishedJourneys = cache(async (): Promise<PublishedJourney[]> => readPublished());
-export const getPublishedJourney = cache(async (slug: string): Promise<PublishedJourney | undefined> => (await readPublished(slug))[0]);
+const getPublishedSlugs = cache(async (): Promise<string[]> => readPublicCached("journeys", "index", async () => {
+  if (isDemoPreview()) return [initialTravel().slug];
+  try { return await readPublishedTravelSlugs(); }
+  catch (error) {
+    if (isTravelTableMissing(error)) return [initialTravel().slug];
+    throw error;
+  }
+}));
+
+export const getPublishedJourney = cache(async (slug: string): Promise<PublishedJourney | undefined> =>
+  readPublicCached("journeys", `detail:${slug}`, async () => (await readPublished(slug))[0]),
+);
+
+export const getPublishedJourneys = cache(async (): Promise<PublishedJourney[]> => {
+  const routes = await Promise.all((await getPublishedSlugs()).map(getPublishedJourney));
+  return routes.filter((route): route is PublishedJourney => route !== undefined);
+});
+
+const getPublishedOverview = cache(async (slug: string): Promise<PublishedJourneyOverview | undefined> =>
+  readPublicCached("journeys", `overview:${slug}`, async () => {
+    const fallback = () => {
+      const seed = initialTravel();
+      return seed.slug === slug ? { slug, shade: seed.shade, title: seed.journey.title, segments: seed.journey.segments } : undefined;
+    };
+    if (isDemoPreview()) return fallback();
+    try { return await readPublishedTravelOverview(slug); }
+    catch (error) {
+      if (isTravelTableMissing(error)) return fallback();
+      throw error;
+    }
+  }),
+);
+
+export const getPublishedJourneyOverviews = cache(async (): Promise<PublishedJourneyOverview[]> => {
+  const routes = await Promise.all((await getPublishedSlugs()).map(getPublishedOverview));
+  return routes.filter((route): route is PublishedJourneyOverview => route !== undefined);
+});

@@ -182,7 +182,7 @@
 .stopTitle { min-width: 0; max-width: 100%; font-size: var(--font-size); line-height: 1.5; font-weight: 400; margin: 0; }
 .stopMeta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 14px; margin-left: auto; color: #666; font-size: 12px; font-weight: 400; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .stopMeta span { white-space: nowrap; }
-.stopTitle button { display: inline-flex; align-items: center; max-width: 100%; border: 0; padding: .15em .45em; font: inherit; font-weight: 700 !important; line-height: 1; background: transparent; color: var(--fore-color); cursor: pointer; text-align: left; }
+.stopTitle button { display: inline-flex; align-items: center; max-width: 100%; border: 0; padding: .15em 4px; font: inherit; font-weight: 700 !important; line-height: 1; background: transparent; color: var(--fore-color); cursor: pointer; text-align: left; }
 .stopTitle button:hover, .stopTitle button:focus-visible, .stopTitle button[aria-current="location"] { background: var(--fore-color); color: var(--back-color); }
 .photo { margin: 0 0 var(--edge-gap); }
 .photo img { display: block; width: auto; max-width: 100%; height: auto; max-height: var(--journey-image-max-height); margin-inline: auto; object-fit: contain; }

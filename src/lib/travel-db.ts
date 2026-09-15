@@ -3,6 +3,14 @@ import { databaseUrl, isDemoPreview, isReadOnlyPreview } from "./preview-config.
 import { withDatabaseRetry } from "./db-retry-utils.mjs";
 import { initialTravel } from "./travel-seed.mjs";
 import { travelSummary, validateTravelDocument, type TravelDocument, type TravelSummary } from "./travel-content";
+import { assertJourney, type Coordinate } from "./journey";
+
+export interface PublishedJourneyOverview {
+  slug: string;
+  shade: string;
+  title: string;
+  segments: Coordinate[][];
+}
 
 export class TravelStorageError extends Error {
   readonly status: number;
@@ -61,6 +69,24 @@ export async function readPublishedTravels(slug?: string): Promise<TravelDocumen
   const rows = await read(`SELECT id, slug, visible, revision, updated_at, data FROM portfolio_travel
     WHERE visible = true${slug === undefined ? "" : " AND slug = $1"} ORDER BY updated_at DESC, id ASC`, slug === undefined ? [] : [slug]);
   return rows.map(documentFromRow);
+}
+
+export async function readPublishedTravelSlugs(): Promise<string[]> {
+  const rows = await read("SELECT slug FROM portfolio_travel WHERE visible = true ORDER BY updated_at DESC, id ASC");
+  return rows.map((row: Record<string, unknown>) => String(row.slug));
+}
+
+export async function readPublishedTravelOverview(slug: string): Promise<PublishedJourneyOverview | undefined> {
+  // The overview never downloads story text, photos or per-point time/altitude
+  // from Neon. Cache each route separately instead of one growing route array.
+  const rows = await read(`SELECT slug, data->>'shade' AS shade,
+    data->'journey'->>'title' AS title, data->'journey'->'segments' AS segments
+    FROM portfolio_travel WHERE visible = true AND slug = $1`, [slug]);
+  if (!rows[0]) return undefined;
+  const row = rows[0];
+  const geometry = { title: row.title, segments: row.segments, stops: [] };
+  assertJourney(geometry);
+  return { slug: String(row.slug), shade: String(row.shade), title: geometry.title, segments: geometry.segments };
 }
 
 function translateWriteError(error: unknown): never {

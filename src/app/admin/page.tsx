@@ -1,77 +1,37 @@
 import Link from "next/link";
 import AdminPreviewImage from "@/components/AdminPreviewImage";
 import { getFeatureSummary, getMediaItems } from "@/lib/db";
+import { getTravelSummaries } from "@/lib/travel-db";
 
 export default async function AdminDashboard() {
-  const [{ projects, features }, media] = await Promise.all([getFeatureSummary(), getMediaItems()]);
-  const visible = projects.filter((project) => project.visible).length;
-  const drafts = projects.filter((project) => !project.visible).length;
-  const featuredSlugs = new Set(features.filter((feature) => feature.type === "project").map((feature) => feature.projectSlug));
-
-  return (
-    <div>
-      <h1 className="admin-heading">总览</h1>
-      <div className="admin-stats">
-        <div className="admin-stat-card">
-          <span className="admin-stat-number">{projects.length}</span>
-          <span className="admin-stat-label">项目总数</span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-number">{visible}</span>
-          <span className="admin-stat-label">已发布</span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-number">{drafts}</span>
-          <span className="admin-stat-label">草稿</span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-number">{features.length}</span>
-          <span className="admin-stat-label">首页项</span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-number">{media.length}</span>
-          <span className="admin-stat-label">媒体库</span>
-        </div>
-      </div>
-
-      <h2 className="admin-subheading">项目列表</h2>
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>排序</th>
-            <th>封面</th>
-            <th>标题</th>
-            <th>分类</th>
-            <th>状态</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {projects.map((project) => (
-            <tr key={project.id}>
-              <td>{project.order}</td>
-              <td>
-                <AdminPreviewImage
-                  className="loaded admin-table-thumb"
-                  src={project.thumbUrl}
-                  alt={project.titleZh}
-                  width={60}
-                  height={40}
-                />
-              </td>
-              <td>{project.titleZh}</td>
-              <td>{project.design}</td>
-              <td>
-                <span className={`admin-status-badge ${project.visible ? "is-live" : "is-draft"}`}>
-                  {project.visible ? "已发布" : "草稿"}
-                </span>
-                {featuredSlugs.has(project.slug) && <span className="admin-status-badge is-featured">首页精选</span>}
-              </td>
-              <td><Link href={`/admin/projects/${project.slug}`} className="admin-btn-sm">编辑</Link></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+  const [{ projects, features }, media, travel] = await Promise.all([
+    getFeatureSummary(), getMediaItems(), getTravelSummaries().catch(() => null),
+  ]);
+  return <div>
+    <div className="admin-page-header"><h1 className="admin-heading">总览</h1><div className="admin-actions">
+      <Link href="/admin/projects/new" className="admin-btn admin-btn-secondary">新建作品</Link><Link href="/admin/travel/new" className="admin-btn">新建旅行</Link>
+    </div></div>
+    <div className="admin-stats">
+      {([
+        ["/admin/projects", "作品", projects.length], ["/admin/travel", "旅行", travel?.length ?? "—"],
+        ["/admin/features", "首页精选", features.length], ["/admin/media", "媒体", media.length],
+      ] as const).map(([href, label, count]) => <Link key={href} href={href} className="admin-stat-card"><span className="admin-stat-label">{label}</span><span className="admin-stat-number">{count}</span></Link>)}
     </div>
-  );
+    <div className="admin-dashboard-grid">
+      <section className="admin-panel"><div className="admin-section-header"><h2 className="admin-subheading">作品</h2><Link href="/admin/projects" className="admin-btn-sm">全部作品</Link></div>
+        <ul className="admin-dashboard-list">{projects.slice(0, 6).map(project => <li key={project.id}><Link href={`/admin/projects/${project.slug}`}>
+          <AdminPreviewImage src={project.thumbUrl} alt="" width={72} height={50} /><strong>{project.titleZh}</strong>
+          <span className={`admin-status-badge ${project.visible ? "is-live" : "is-draft"}`}>{project.visible ? "已发布" : "草稿"}</span>
+        </Link></li>)}</ul>
+        {!projects.length && <p className="admin-muted">暂无作品</p>}
+      </section>
+      <section className="admin-panel"><div className="admin-section-header"><h2 className="admin-subheading">旅行</h2><Link href="/admin/travel" className="admin-btn-sm">全部旅行</Link></div>
+        <ul className="admin-dashboard-list">{travel?.slice(0, 6).map(journey => <li key={journey.id}><Link href={`/admin/travel/${journey.id}`}>
+          <div><strong>{journey.title}</strong><div className="admin-muted">{journey.stopCount} 段正文 · {journey.pointCount.toLocaleString()} 个轨迹点</div></div>
+          <span className={`admin-status-badge ${journey.visible ? "is-live" : "is-draft"}`}>{journey.visible ? "已发布" : "草稿"}</span>
+        </Link></li>)}</ul>
+        {travel === null ? <p className="admin-muted">旅行暂时无法加载</p> : !travel.length && <p className="admin-muted">暂无旅行</p>}
+      </section>
+    </div>
+  </div>;
 }

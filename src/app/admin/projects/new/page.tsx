@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import AdminImageField from "@/components/AdminImageField";
+import styles from "../../content-pages.module.css";
 
 const initialDraft = {
   slug: "",
@@ -84,76 +86,67 @@ export default function NewProjectPage() {
 
   return (
     <div>
-      <h1 className="admin-heading">新建作品</h1>
-      <form onSubmit={handleSubmit} className="admin-form">
-        <h2 className="admin-subheading">基本信息</h2>
-        <div className="admin-form-row">
+      <div className="admin-page-header">
+        <h1 className="admin-heading">新建作品</h1>
+        <Link href="/admin/projects" className="admin-btn-secondary">返回作品列表</Link>
+      </div>
+      <form onSubmit={handleSubmit} className="admin-form-stack">
+        <section className="admin-panel" aria-labelledby="project-info-heading">
+        <h2 className="admin-subheading" id="project-info-heading">基本信息</h2>
+        <div className="admin-form-grid">
           <div className="admin-form-group">
-            <label>标识 slug</label>
+            <label htmlFor="new-project-title">作品标题 *</label>
             <input
-              value={draft.slug}
-              onChange={(event) => updateField("slug", event.target.value)}
-              required
-              placeholder="my-project-slug"
-              className="admin-input"
-            />
-          </div>
-          <div className="admin-form-group">
-            <label>标题</label>
-            <input
+              id="new-project-title"
               value={draft.titleZh}
               onChange={(event) => {
                 updateField("titleZh", event.target.value);
                 if (!draft.slug) updateField("slug", "work-" + Date.now().toString(36));
               }}
               required
-              placeholder="我的项目"
+              placeholder="作品名称"
               className="admin-input"
             />
           </div>
-        </div>
-        <div className="admin-form-row">
           <div className="admin-form-group">
-            <label>分类</label>
-            <input value={draft.design} onChange={(event) => updateField("design", event.target.value)} placeholder="建筑摄影" className="admin-input" />
-          </div>
-          <div className="admin-form-group">
-            <label>城市</label>
-            <input value={draft.city} onChange={(event) => updateField("city", event.target.value)} placeholder="上海" className="admin-input" />
-          </div>
-        </div>
-        <div className="admin-form-row">
-          <div className="admin-form-group">
-            <label>时间</label>
-            <input value={draft.time} onChange={(event) => updateField("time", event.target.value)} placeholder="2024 / 已完成" className="admin-input" />
-          </div>
-          <div className="admin-form-group">
-            <label>设备器材</label>
-            <input value={draft.equipment} onChange={(event) => updateField("equipment", event.target.value)} placeholder="Sony A7R5 + 24-70mm" className="admin-input" />
-          </div>
-        </div>
-        <div className="admin-form-row">
-          <div className="admin-form-group">
-            <label>排序</label>
-            <input value={draft.order} onChange={(event) => updateField("order", event.target.value)} type="number" className="admin-input" />
-          </div>
-          <div className="admin-form-group" style={{ alignSelf: "flex-end" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input checked={draft.visible} onChange={(event) => updateField("visible", event.target.checked)} type="checkbox" style={{ width: "auto" }} />
-              创建后公开发布
-            </label>
-          </div>
-        </div>
-
-        <h2 className="admin-subheading">展示图片</h2>
-        <div className="admin-form-row admin-image-form-row">
-          <div className="admin-form-group">
-            <AdminImageField
-              label="首页精选图"
-              value={draft.featureUrl}
-              onChange={(value) => updateField("featureUrl", value)}
+            <label htmlFor="new-project-slug">页面地址 *</label>
+            <input
+              id="new-project-slug"
+              value={draft.slug}
+              onChange={(event) => updateField("slug", event.target.value)}
+              required
+              placeholder="my-project-slug"
+              className="admin-input"
+              aria-describedby="new-project-slug-hint"
             />
+            <p className="admin-field-hint" id="new-project-slug-hint">使用小写字母、数字和连字符，可保留自动生成的地址。</p>
           </div>
+        </div>
+        <div className="admin-form-grid">
+          <div className="admin-form-group">
+            <label htmlFor="new-project-category">分类</label>
+            <input id="new-project-category" value={draft.design} onChange={(event) => updateField("design", event.target.value)} placeholder="建筑摄影" className="admin-input" />
+          </div>
+          <div className="admin-form-group">
+            <label htmlFor="new-project-city">城市</label>
+            <input id="new-project-city" value={draft.city} onChange={(event) => updateField("city", event.target.value)} placeholder="上海" className="admin-input" />
+          </div>
+        </div>
+        <div className="admin-form-grid">
+          <div className="admin-form-group">
+            <label htmlFor="new-project-time">时间</label>
+            <input id="new-project-time" value={draft.time} onChange={(event) => updateField("time", event.target.value)} placeholder="2024 / 已完成" className="admin-input" />
+          </div>
+          <div className="admin-form-group">
+            <label htmlFor="new-project-equipment">设备器材</label>
+            <input id="new-project-equipment" value={draft.equipment} onChange={(event) => updateField("equipment", event.target.value)} placeholder="Sony A7R5 + 24-70mm" className="admin-input" />
+          </div>
+        </div>
+        </section>
+
+        <section className="admin-panel" aria-labelledby="project-images-heading">
+        <h2 className="admin-subheading" id="project-images-heading">展示图片</h2>
+        <div className={styles.imageFields}>
           <div className="admin-form-group">
             <AdminImageField
               label="详情首屏大图"
@@ -172,7 +165,7 @@ export default function NewProjectPage() {
           </div>
           <div className="admin-form-group">
             <AdminImageField
-              label="Works 缩略图"
+              label="作品列表缩略图"
               value={draft.thumbUrl}
               onChange={(value) => updateField("thumbUrl", value)}
               onSize={(width, height) => {
@@ -182,12 +175,38 @@ export default function NewProjectPage() {
               required
             />
           </div>
+          <div className="admin-form-group">
+            <AdminImageField
+              label="首页精选图（可选）"
+              value={draft.featureUrl}
+              onChange={(value) => updateField("featureUrl", value)}
+            />
+          </div>
         </div>
+        </section>
 
-        <button type="submit" className="admin-btn" disabled={saving}>
-          {saving ? "创建中..." : "创建作品"}
-        </button>
-        {message && <p className="admin-message is-error">{message}</p>}
+        <section className="admin-panel" aria-labelledby="project-publish-heading">
+          <h2 className="admin-subheading" id="project-publish-heading">发布设置</h2>
+          <div className="admin-form-grid">
+            <div className="admin-form-group">
+              <label htmlFor="new-project-order">展示排序</label>
+              <input id="new-project-order" value={draft.order} onChange={(event) => updateField("order", event.target.value)} type="number" className="admin-input" />
+            </div>
+            <div className="admin-form-group">
+              <label>可见性</label>
+              <label className={styles.visibility}>
+                <input checked={draft.visible} onChange={(event) => updateField("visible", event.target.checked)} type="checkbox" />
+                创建后公开发布
+              </label>
+            </div>
+          </div>
+        </section>
+        <div className="admin-save-bar">
+          <span role="status" className={`admin-message${message ? " is-error" : ""}`}>{message || "创建后可继续添加照片和调整排版"}</span>
+          <button type="submit" className="admin-btn" disabled={saving}>
+            {saving ? "创建中..." : "创建作品"}
+          </button>
+        </div>
       </form>
     </div>
   );

@@ -105,7 +105,7 @@ export default function AdminProjectEditor({ initial, readOnly, isFeatured }: { 
   return <div className={styles.editor}>
     <header className={styles.header}>
       <div><h1>编辑作品</h1><div className={styles.status}><span>{saved.visible ? "已发布" : "草稿"}</span>{isFeatured && <span>首页精选中</span>}<span>{project.rows.length} 行 / {imageCount} 张照片</span></div></div>
-      <Link href="/admin/projects">作品管理</Link>
+      <Link href="/admin/projects" className="admin-btn-sm">作品管理</Link>
     </header>
     <nav className={styles.sectionNav} aria-label="作品编辑分区">
       <button type="button" onClick={() => openSection("information")}>作品信息</button><button type="button" onClick={() => openSection("pictures")}>展示图片</button><button type="button" onClick={() => openSection("rows")}>图片编排</button><button type="button" onClick={() => openSection("settings")}>更多设置</button>

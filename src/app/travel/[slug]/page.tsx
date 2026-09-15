@@ -9,7 +9,10 @@ import JourneyOutline from "../JourneyOutline";
 import JourneyCoverStats from "../JourneyCoverStats";
 import styles from "../travel.module.css";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
+
+// Build each public journey on its first visit, then reuse the rendered page.
+export function generateStaticParams() { return []; }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

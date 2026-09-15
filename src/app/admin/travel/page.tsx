@@ -3,7 +3,6 @@ import { isAuthenticated } from "@/lib/auth";
 import { getTravelSummaries, isTravelTableMissing } from "@/lib/travel-db";
 import type { TravelSummary } from "@/lib/travel-content";
 import { formatJourneyTime } from "@/lib/journey-metadata";
-import styles from "./travel-admin.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -18,13 +17,14 @@ export default async function AdminTravelPage() {
       : "旅行列表暂时无法加载，请稍后刷新。";
   }
   return (
-    <div className={styles.page}>
+    <div>
       <div className="admin-page-header">
         <h1 className="admin-heading" style={{ margin: 0 }}>旅行管理</h1>
         <Link href="/admin/travel/new" className="admin-btn">+ 新建旅行</Link>
       </div>
-      {errorMessage ? <p role="alert" className="admin-message is-error">{errorMessage}</p> : journeys.length === 0 ? <p>暂无旅行。新建旅行后，可导入 CSV 并编辑路线和正文。</p> : (
-        <div className={styles.tableWrap} tabIndex={0} role="region" aria-label="旅行列表，可左右滚动">
+      {errorMessage ? <p role="alert" className="admin-message is-error">{errorMessage}</p> : journeys.length === 0 ? <p className="admin-empty">暂无旅行。新建旅行后，可导入 CSV 并编辑路线和正文。</p> : <>
+        <div className="admin-toolbar"><span className="admin-muted">{journeys.length} 条旅行 · {journeys.filter(journey => journey.visible).length} 条已发布</span></div>
+        <div className="admin-table-wrap" tabIndex={0} role="region" aria-label="旅行列表，可左右滚动">
           <table className="admin-table">
             <thead><tr><th>标题</th><th>正文</th><th>轨迹点</th><th>状态</th><th>最近修改</th><th>操作</th></tr></thead>
             <tbody>{journeys.map((journey) => (
@@ -41,7 +41,7 @@ export default async function AdminTravelPage() {
             ))}</tbody>
           </table>
         </div>
-      )}
+      </>}
     </div>
   );
 }

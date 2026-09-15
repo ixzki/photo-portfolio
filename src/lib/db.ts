@@ -6,6 +6,7 @@ import { hasManualProjectOrder, sortProjectsForDisplay } from "./project-order-u
 import { FeatureItem, Image, LayoutType, MediaItem, Project, Row, SiteSettings } from "./types";
 import { databaseUrl, isDemoPreview, isReadOnlyPreview } from "./preview-config.mjs";
 import { redirect } from "next/navigation";
+import { readPublicCached } from "./public-cache";
 
 type SqlClient = ReturnType<typeof neon>;
 type ProjectCreateInput = Omit<Project, "id" | "rows"> & { rows?: Omit<Row, "id" | "images">[] };
@@ -672,9 +673,9 @@ async function getSettingsImpl(): Promise<SiteSettings> {
 export const getSettings = cache(getSettingsImpl);
 
 // The configuration page must be renderable before a database is configured.
-export async function getShellSettings(): Promise<SiteSettings> {
-  return hasDatabase() ? getSettings() : structuredClone(seedSettings);
-}
+export const getShellSettings = cache(async (): Promise<SiteSettings> =>
+  readPublicCached("settings", "shell", () => hasDatabase() ? getSettingsImpl() : Promise.resolve(structuredClone(seedSettings))),
+);
 
 export async function updateSettings(data: Partial<SiteSettings>): Promise<SiteSettings> {
   const updated = normalizeSettings({ ...(await getSettings()), ...data });

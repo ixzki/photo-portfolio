@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Jost, Noto_Sans_SC } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import ScrollProgress from "@/components/ScrollProgress";
+import SiteLoading from "@/components/SiteLoading";
 import { getShellSettings } from "@/lib/db";
 import { isDemoPreview, isReadOnlyPreview } from "@/lib/preview-config.mjs";
 import "./globals.css";
@@ -51,8 +54,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+async function SiteNavbar() {
   const settings = await getShellSettings();
+  return <Navbar siteName={settings.siteName} />;
+}
+
+async function SiteFooter() {
+  const settings = await getShellSettings();
+  return <Footer copyright={settings.copyright} icp={settings.icp} />;
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const previewLabel = !process.env.VERCEL ? process.env.LOCAL_PREVIEW_LABEL : undefined;
 
   return (
@@ -63,14 +75,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="theme-color" content="#ffffff" />
       </head>
       <body className={`${jost.variable} ${notoSansSc.variable}`}>
-        {(isReadOnlyPreview() || previewLabel) && (
-          <div className="preview-notice" role="status" style={{ position: "fixed", bottom: 12, left: 12, zIndex: 9999, maxWidth: "calc(100vw - 24px)", padding: "8px 12px", background: "#172019", color: "#fff", fontSize: 12, borderRadius: 6 }}>
-            {isDemoPreview() ? "本地示例预览 · 非线上作品 · 只读" : isReadOnlyPreview() ? "只读预览 · 修改与删除已禁用" : previewLabel}
-          </div>
-        )}
-        <Navbar siteName={settings.siteName} />
-        <main>{children}</main>
-        <Footer copyright={settings.copyright} icp={settings.icp} />
+        <SiteLoading>
+          <ScrollProgress />
+          {(isReadOnlyPreview() || previewLabel) && (
+            <div className="preview-notice" role="status" style={{ position: "fixed", bottom: 12, left: 12, zIndex: 9999, maxWidth: "calc(100vw - 24px)", padding: "8px 12px", background: "#172019", color: "#fff", fontSize: 12, borderRadius: 6 }}>
+              {isDemoPreview() ? "本地示例预览 · 非线上作品 · 只读" : isReadOnlyPreview() ? "只读预览 · 修改与删除已禁用" : previewLabel}
+            </div>
+          )}
+          <Suspense fallback={<Navbar siteName="iXzKi" />}><SiteNavbar /></Suspense>
+          <main>{children}</main>
+          <Suspense fallback={null}><SiteFooter /></Suspense>
+        </SiteLoading>
       </body>
     </html>
   );
