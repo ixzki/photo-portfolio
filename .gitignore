@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-demo/
 /out/
 
 # production
@@ -52,3 +53,13 @@ CLAUDE.md
 .windsurf/
 .local-preview/
 __pycache__/
+
+# Personal imports and exports belong outside the source tree.
+*.csv
+*.gpx
+*.kml
+*.kmz
+*.sql
+*.dump
+*.backup
+!examples/*.csv

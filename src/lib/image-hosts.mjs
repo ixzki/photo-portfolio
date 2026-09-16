@@ -1,4 +1,3 @@
-const DEFAULT_UPYUN_HOSTS = ["img.ixzki.com"];
 const UNSPLASH_HOSTS = ["images.unsplash.com", "plus.unsplash.com"];
 
 // Accept exact public hostnames only: no schemes, paths, ports or wildcards.
@@ -13,7 +12,7 @@ export function parseImageHosts(value = "") {
 
 export function getUpyunHosts() {
   // Direct references let Next.js inline these public values into browser bundles.
-  return [...new Set([...DEFAULT_UPYUN_HOSTS, ...parseImageHosts(process.env.NEXT_PUBLIC_UPYUN_HOSTS)])];
+  return parseImageHosts(process.env.NEXT_PUBLIC_UPYUN_HOSTS);
 }
 
 export function isUpyunHostname(hostname) {

@@ -19,7 +19,7 @@ test("empty drafts can be saved but publication requires a route, body, and cove
   assert.equal(validateTravelDocument(document).visible, false);
   document.visible = true;
   assert.throws(() => validateTravelDocument(document), /封面/);
-  document.cover.src = "https://img.ixzki.com/cover.jpg";
+  document.cover.src = "https://cdn.example.com/cover.jpg";
   assert.throws(() => validateTravelDocument(document), /路线/);
   Object.assign(document.journey, draft().journey);
   document.journey.stops.forEach((stop) => { stop.markdown = ""; });
@@ -28,13 +28,14 @@ test("empty drafts can be saved but publication requires a route, body, and cove
   assert.doesNotThrow(() => validateTravelDocument(document));
 });
 
-test("the existing Xinjiang migration seed retains all coordinates and chronological stops", () => {
+test("the synthetic example seed retains coordinates, metadata and chronological stories", () => {
   const seed = initialTravel();
   const normalized = validateTravelDocument(seed);
   assert.deepEqual(normalized.journey.segments, seed.journey.segments);
   assert.equal(normalized.journey.stops.length, 9);
   assertJourney(normalized.journey);
-  assert.equal(travelSummary(normalized).pointCount, 20168);
+  assert.equal(travelSummary(normalized).pointCount, 49);
+  assert.deepEqual(normalized.journey.pointMeta, seed.journey.pointMeta);
 });
 
 test("body sorting and anchor coordinates are normalized without mutating the editor document", () => {
@@ -78,14 +79,14 @@ test("invalid coordinates, indexes, duplicate IDs, route sizes, and colors are r
   }
 });
 
-test("image URLs use img.ixzki.com and executable or credential-bearing cover URLs are rejected", () => {
+test("custom image hosts are preserved and executable or credential-bearing cover URLs are rejected", () => {
   const document = draft();
-  document.cover.src = "https://upyun.ixzki.com/cover.jpg";
-  document.journey.stops[0].markdown = "![照片](https://upyun.ixzki.com/a.jpg)\nhttps://upyun.ixzki.com.evil.test/no.jpg";
+  document.cover.src = "https://legacy.example.com/cover.jpg";
+  document.journey.stops[0].markdown = "![照片](https://legacy.example.com/a.jpg)\nhttps://legacy.example.com.evil.test/no.jpg";
   const normalized = validateTravelDocument(document);
-  assert.equal(normalized.cover.src, "https://img.ixzki.com/cover.jpg");
-  assert.match(normalized.journey.stops[0].markdown, /https:\/\/img\.ixzki\.com\/a\.jpg/);
-  assert.match(normalized.journey.stops[0].markdown, /https:\/\/upyun\.ixzki\.com\.evil\.test\/no\.jpg/);
+  assert.equal(normalized.cover.src, "https://legacy.example.com/cover.jpg");
+  assert.match(normalized.journey.stops[0].markdown, /https:\/\/legacy\.example\.com\/a\.jpg/);
+  assert.match(normalized.journey.stops[0].markdown, /https:\/\/legacy\.example\.com\.evil\.test\/no\.jpg/);
   for (const src of ["javascript:alert(1)", "data:image/svg+xml,evil", "https://user:pass@example.com/img.jpg"]) {
     document.cover.src = src;
     assert.throws(() => validateTravelDocument(document));

@@ -1,14 +1,14 @@
-import xinjiang from "../data/travel.json" with { type: "json" };
+import exampleJourney from "../data/example-journey.json" with { type: "json" };
 
 // A migration seed and a missing-table fallback, never reinserted by a read request.
 export function initialTravel() {
   return {
-    id: "xinjiang-2026", slug: "xinjiang-2026", shade: "#626262",
-    visible: true, revision: 1, updatedAt: "2026-09-14T00:00:00.000Z",
+    id: "example-journey", slug: "example-journey", shade: "#626262",
+    visible: true, revision: 1, updatedAt: "2024-05-02T00:00:00.000Z",
     cover: {
-      src: "https://img.ixzki.com/2026/07/01/28a0242a4ed34652af813c010bd9a23c.jpg",
-      alt: "六月伊犁", width: 6000, height: 4500,
+      src: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=2400&q=88",
+      alt: "湖泊与群山 · 示例照片", width: 2400, height: 1600,
     },
-    journey: structuredClone(xinjiang),
+    journey: structuredClone(exampleJourney),
   };
 }

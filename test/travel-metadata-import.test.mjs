@@ -5,7 +5,7 @@ import { metadataImportIssue, updateJourneyMetadata } from "../src/lib/travel-me
 function fixture() {
   const journey = { title: "已有旅行", segments: [[[40, 90], [40.01, 90.01]], [[41, 91], [41.01, 91.01]]], stops: [
     { id: "story", title: "原有地点", position: [40, 90], routePointIndex: 0, routeEndPointIndex: 1,
-      markdown: "**保留 Markdown**", paragraphs: ["旧正文"], images: [{ src: "https://img.ixzki.com/photo.jpg", alt: "照片", width: 4, height: 3 }], featured: true },
+      markdown: "**保留 Markdown**", paragraphs: ["旧正文"], images: [{ src: "https://cdn.example.com/photo.jpg", alt: "照片", width: 4, height: 3 }], featured: true },
   ] };
   return { journey, imported: { segments: structuredClone(journey.segments), pointMeta: Array.from({ length: 4 }, (_, index) => ({ time: 100 + index, altitude: index === 0 ? 0 : index + 1000 })) } };
 }

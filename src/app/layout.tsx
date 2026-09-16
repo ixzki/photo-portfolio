@@ -82,7 +82,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {isDemoPreview() ? "本地示例预览 · 非线上作品 · 只读" : isReadOnlyPreview() ? "只读预览 · 修改与删除已禁用" : previewLabel}
             </div>
           )}
-          <Suspense fallback={<Navbar siteName="iXzKi" />}><SiteNavbar /></Suspense>
+          <Suspense fallback={<Navbar siteName="Portfolio" />}><SiteNavbar /></Suspense>
           <main>{children}</main>
           <Suspense fallback={null}><SiteFooter /></Suspense>
         </SiteLoading>

@@ -12,7 +12,6 @@ function photoUrl(value: string, label: string, section: ProjectEditorError["sec
   try {
     const url = new URL(value.trim());
     if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) throw new Error();
-    if (url.hostname.toLowerCase() === "upyun.ixzki.com") url.hostname = "img.ixzki.com";
     return url.href;
   } catch { throw new ProjectEditorError(`请填写${label}的有效图片链接。`, section, imageId); }
 }

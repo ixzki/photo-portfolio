@@ -117,8 +117,8 @@ export default function AdminProjectEditor({ initial, readOnly, isFeatured }: { 
           <h2>作品信息</h2><div className={styles.infoFields}>
             <label className={styles.titleField}>作品标题<input className="admin-input" value={project.titleZh} onChange={(event) => field("titleZh", event.target.value)} placeholder="作品名称" /></label>
             <label>分类<input className="admin-input" value={project.design} onChange={(event) => field("design", event.target.value)} placeholder="风光摄影" /></label>
-            <label>城市<input className="admin-input" value={project.city} onChange={(event) => field("city", event.target.value)} placeholder="伊犁" /></label>
-            <label>时间<input className="admin-input" value={project.time} onChange={(event) => field("time", event.target.value)} placeholder="2026 / 06" /></label>
+            <label>城市<input className="admin-input" value={project.city} onChange={(event) => field("city", event.target.value)} placeholder="拍摄地点" /></label>
+            <label>时间<input className="admin-input" value={project.time} onChange={(event) => field("time", event.target.value)} placeholder="2024 / 05" /></label>
             <label>拍摄器材<input className="admin-input" value={project.equipment} onChange={(event) => field("equipment", event.target.value)} placeholder="相机与镜头" /></label>
           </div>
         </section>

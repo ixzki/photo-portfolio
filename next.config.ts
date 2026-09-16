@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 import { getImageRemotePatterns } from "./src/lib/image-hosts.mjs";
+import { isDemoPreview } from "./src/lib/preview-config.mjs";
 
 const nextConfig: NextConfig = {
+  distDir: isDemoPreview() ? ".next-demo" : ".next",
   devIndicators: false,
   images: {
     remotePatterns: getImageRemotePatterns(process.env.IMAGE_REMOTE_HOSTS),

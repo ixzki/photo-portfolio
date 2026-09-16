@@ -4,7 +4,7 @@ import test from "node:test";
 import { journeyOutline } from "../src/lib/journey-outline.ts";
 
 test("cover outline fits the complete journey and keeps recording gaps separate", () => {
-  const journey = JSON.parse(readFileSync(new URL("../src/data/travel.json", import.meta.url), "utf8"));
+  const journey = JSON.parse(readFileSync(new URL("../src/data/example-journey.json", import.meta.url), "utf8"));
   const paths = journeyOutline(journey.segments);
   assert.equal(paths.length, journey.segments.length);
   for (const path of paths) {

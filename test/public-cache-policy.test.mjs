@@ -27,9 +27,9 @@ test("public caches are separated by deployment, database and demo source withou
 
 test("compressed public data preserves Unicode, geometry, metadata and missing journeys", async () => {
   const content = {
-    title: "西北环线2025", segments: [[[40.1234567, 94.8765432], [40, 95]]],
+    title: "示例旅行", segments: [[[40.1234567, 94.8765432], [40, 95]]],
     pointMeta: [{ time: 1759114800, altitude: -100.3 }, { time: null, altitude: null }],
-    markdown: "[敦煌](https://img.ixzki.com/a.jpg)\n\n你好 ✈️",
+    markdown: "[示例地点](https://cdn.example.com/a.jpg)\n\n你好 ✈️",
   };
   assert.deepEqual(await decodePublicCacheValue(await encodePublicCacheValue(content)), content);
   assert.equal(await decodePublicCacheValue(await encodePublicCacheValue(undefined)), undefined);

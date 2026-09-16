@@ -1,0 +1,559 @@
+{
+  "title": "湖畔两日 · 示例路线",
+  "segments": [
+    [
+      [
+        46.45,
+        6.45
+      ],
+      [
+        46.454333,
+        6.457333
+      ],
+      [
+        46.458399,
+        6.464935
+      ],
+      [
+        46.462,
+        6.473
+      ],
+      [
+        46.465065,
+        6.481601
+      ],
+      [
+        46.467667,
+        6.490667
+      ],
+      [
+        46.47,
+        6.5
+      ],
+      [
+        46.476,
+        6.504
+      ],
+      [
+        46.481732,
+        6.508268
+      ],
+      [
+        46.487,
+        6.513
+      ],
+      [
+        46.491732,
+        6.518268
+      ],
+      [
+        46.496,
+        6.524
+      ],
+      [
+        46.5,
+        6.53
+      ],
+      [
+        46.506,
+        6.540667
+      ],
+      [
+        46.511732,
+        6.551601
+      ],
+      [
+        46.517,
+        6.563
+      ],
+      [
+        46.521732,
+        6.574935
+      ],
+      [
+        46.526,
+        6.587333
+      ],
+      [
+        46.53,
+        6.6
+      ],
+      [
+        46.526,
+        6.587333
+      ],
+      [
+        46.521732,
+        6.574935
+      ],
+      [
+        46.517,
+        6.563
+      ],
+      [
+        46.511732,
+        6.551601
+      ],
+      [
+        46.506,
+        6.540667
+      ],
+      [
+        46.5,
+        6.53
+      ],
+      [
+        46.497667,
+        6.545667
+      ],
+      [
+        46.495065,
+        6.561601
+      ],
+      [
+        46.492,
+        6.578
+      ],
+      [
+        46.488399,
+        6.594935
+      ],
+      [
+        46.484333,
+        6.612333
+      ],
+      [
+        46.48,
+        6.63
+      ]
+    ],
+    [
+      [
+        46.474333,
+        6.639
+      ],
+      [
+        46.468399,
+        6.648268
+      ],
+      [
+        46.462,
+        6.658
+      ],
+      [
+        46.455065,
+        6.668268
+      ],
+      [
+        46.447667,
+        6.679
+      ],
+      [
+        46.44,
+        6.69
+      ],
+      [
+        46.437667,
+        6.677333
+      ],
+      [
+        46.435065,
+        6.664935
+      ],
+      [
+        46.432,
+        6.653
+      ],
+      [
+        46.428399,
+        6.641601
+      ],
+      [
+        46.424333,
+        6.630667
+      ],
+      [
+        46.42,
+        6.62
+      ],
+      [
+        46.417667,
+        6.605667
+      ],
+      [
+        46.415065,
+        6.591601
+      ],
+      [
+        46.412,
+        6.578
+      ],
+      [
+        46.408399,
+        6.564935
+      ],
+      [
+        46.404333,
+        6.552333
+      ],
+      [
+        46.4,
+        6.54
+      ]
+    ]
+  ],
+  "pointMeta": [
+    {
+      "time": 1714521600,
+      "altitude": 420
+    },
+    {
+      "time": 1714522200,
+      "altitude": 441
+    },
+    {
+      "time": 1714522800,
+      "altitude": 462
+    },
+    {
+      "time": 1714523400,
+      "altitude": 482
+    },
+    {
+      "time": 1714524000,
+      "altitude": 503
+    },
+    {
+      "time": 1714524600,
+      "altitude": 523
+    },
+    {
+      "time": 1714525200,
+      "altitude": 542
+    },
+    {
+      "time": 1714525800,
+      "altitude": 562
+    },
+    {
+      "time": 1714526400,
+      "altitude": 580
+    },
+    {
+      "time": 1714527000,
+      "altitude": 598
+    },
+    {
+      "time": 1714527600,
+      "altitude": 615
+    },
+    {
+      "time": 1714528200,
+      "altitude": 631
+    },
+    {
+      "time": 1714528800,
+      "altitude": 646
+    },
+    {
+      "time": 1714529400,
+      "altitude": 661
+    },
+    {
+      "time": 1714530000,
+      "altitude": 674
+    },
+    {
+      "time": 1714530600,
+      "altitude": 686
+    },
+    {
+      "time": 1714531200,
+      "altitude": 697
+    },
+    {
+      "time": 1714531800,
+      "altitude": 707
+    },
+    {
+      "time": 1714532400,
+      "altitude": 716
+    },
+    {
+      "time": 1714533000,
+      "altitude": 723
+    },
+    {
+      "time": 1714533600,
+      "altitude": 729
+    },
+    {
+      "time": 1714534200,
+      "altitude": 734
+    },
+    {
+      "time": 1714534800,
+      "altitude": 737
+    },
+    {
+      "time": 1714535400,
+      "altitude": 739
+    },
+    {
+      "time": 1714536000,
+      "altitude": 740
+    },
+    {
+      "time": 1714536600,
+      "altitude": 739
+    },
+    {
+      "time": 1714537200,
+      "altitude": 737
+    },
+    {
+      "time": 1714537800,
+      "altitude": 734
+    },
+    {
+      "time": 1714538400,
+      "altitude": 729
+    },
+    {
+      "time": 1714539000,
+      "altitude": 723
+    },
+    {
+      "time": 1714539600,
+      "altitude": 716
+    },
+    {
+      "time": 1714608000,
+      "altitude": 707
+    },
+    {
+      "time": 1714608600,
+      "altitude": 697
+    },
+    {
+      "time": 1714609200,
+      "altitude": 686
+    },
+    {
+      "time": 1714609800,
+      "altitude": 674
+    },
+    {
+      "time": 1714610400,
+      "altitude": 661
+    },
+    {
+      "time": 1714611000,
+      "altitude": 646
+    },
+    {
+      "time": 1714611600,
+      "altitude": 631
+    },
+    {
+      "time": 1714612200,
+      "altitude": 615
+    },
+    {
+      "time": 1714612800,
+      "altitude": 598
+    },
+    {
+      "time": 1714613400,
+      "altitude": 580
+    },
+    {
+      "time": 1714614000,
+      "altitude": 562
+    },
+    {
+      "time": 1714614600,
+      "altitude": 542
+    },
+    {
+      "time": 1714615200,
+      "altitude": 523
+    },
+    {
+      "time": 1714615800,
+      "altitude": 503
+    },
+    {
+      "time": 1714616400,
+      "altitude": 482
+    },
+    {
+      "time": 1714617000,
+      "altitude": 462
+    },
+    {
+      "time": 1714617600,
+      "altitude": 441
+    },
+    {
+      "time": 1714618200,
+      "altitude": 420
+    }
+  ],
+  "stops": [
+    {
+      "id": "example-start",
+      "title": "示例出发点",
+      "position": [
+        46.45,
+        6.45
+      ],
+      "routePointIndex": 0,
+      "featured": true,
+      "markdown": "这是一段虚构的两日湖畔旅程，用于预览旅行页面。路线、时间与海拔由程序合成，配图来自 Unsplash，不对应真实行程，也不能用于导航。",
+      "paragraphs": [],
+      "images": [
+        {
+          "src": "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1800&q=86",
+          "alt": "清晨湖面 · Unsplash 示例照片",
+          "width": 1800,
+          "height": 1200
+        }
+      ]
+    },
+    {
+      "id": "shore-road",
+      "title": "沿岸小路",
+      "position": [
+        46.47,
+        6.5
+      ],
+      "routePointIndex": 6,
+      "routeEndPointIndex": 10,
+      "featured": false,
+      "markdown": "沿着水边缓缓前行，让远山和近处的树影轮流进入画面。\n\n**示例路段**：正文可以对应一段连续的路线，而不只是一个地点。",
+      "paragraphs": [],
+      "images": []
+    },
+    {
+      "id": "lakeside-stop",
+      "title": "湖畔停靠",
+      "position": [
+        46.5,
+        6.53
+      ],
+      "routePointIndex": 12,
+      "featured": true,
+      "markdown": "把这一页留给水面、光线和短暂的停留。\n\n> 留一点空白，让画面自己说话。",
+      "paragraphs": [],
+      "images": [
+        {
+          "src": "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1800&q=86",
+          "alt": "山谷与湖 · Unsplash 示例照片",
+          "width": 1800,
+          "height": 1200
+        }
+      ]
+    },
+    {
+      "id": "hill-turn",
+      "title": "山间转弯",
+      "position": [
+        46.53,
+        6.6
+      ],
+      "routePointIndex": 18,
+      "featured": true,
+      "markdown": "道路转向山间，景色从开阔变得安静。这里以一张竖幅照片展示另一种阅读节奏。",
+      "paragraphs": [],
+      "images": [
+        {
+          "src": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=86",
+          "alt": "林间光线 · Unsplash 示例照片",
+          "width": 1200,
+          "height": 1600
+        }
+      ]
+    },
+    {
+      "id": "lakeside-return",
+      "title": "重访湖畔",
+      "position": [
+        46.5,
+        6.53
+      ],
+      "routePointIndex": 24,
+      "featured": false,
+      "markdown": "在示例路线中再次回到同一坐标。一天里不同的时间，可以为同一个地点留下两段独立的记忆。",
+      "paragraphs": [],
+      "images": []
+    },
+    {
+      "id": "day-one-end",
+      "title": "第一天终点",
+      "position": [
+        46.48,
+        6.63
+      ],
+      "routePointIndex": 30,
+      "featured": false,
+      "markdown": "日落之前停下脚步，把今天最后一张照片收在这里。\n\n下一段从第二天开始；没有记录的部分留白，不补画连接线。",
+      "paragraphs": [],
+      "images": [
+        {
+          "src": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=86",
+          "alt": "山野暮色 · Unsplash 示例照片",
+          "width": 1800,
+          "height": 1200
+        }
+      ]
+    },
+    {
+      "id": "morning-road",
+      "title": "次日山路",
+      "position": [
+        46.44,
+        6.69
+      ],
+      "routePointIndex": 36,
+      "routeEndPointIndex": 40,
+      "featured": false,
+      "markdown": "早晨的路适合慢一点。\n\n- 看远处的轮廓\n- 记录路边的光\n- 为下一段停留留出时间",
+      "paragraphs": [],
+      "images": []
+    },
+    {
+      "id": "forest-lookout",
+      "title": "林间观景点",
+      "position": [
+        46.42,
+        6.62
+      ],
+      "routePointIndex": 42,
+      "featured": true,
+      "markdown": "穿过树影，视野再次展开。用一张横幅照片，为这一段旅程留出呼吸。",
+      "paragraphs": [],
+      "images": [
+        {
+          "src": "https://images.unsplash.com/photo-1498307833015-e7b400441eb8?auto=format&fit=crop&w=1800&q=86",
+          "alt": "水岸景色 · Unsplash 示例照片",
+          "width": 1800,
+          "height": 1200
+        }
+      ]
+    },
+    {
+      "id": "example-end",
+      "title": "示例终点",
+      "position": [
+        46.4,
+        6.54
+      ],
+      "routePointIndex": 48,
+      "featured": true,
+      "markdown": "旅程在这里结束，照片和文字可以继续补充。\n\n你可以将这些示例替换为自己的路线、地点与游记。",
+      "paragraphs": [],
+      "images": []
+    }
+  ]
+}

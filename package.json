@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "preview": "next dev --hostname 127.0.0.1 --port 3100",
+    "demo": "node scripts/demo.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

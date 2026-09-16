@@ -68,7 +68,6 @@ function imageUrl(value: unknown, name: string, allowEmpty = false): string {
   let url: URL;
   try { url = new URL(src); } catch { fail(`${name}需要完整的 HTTP 或 HTTPS 链接。`); }
   if (!["http:", "https:"].includes(url.protocol) || !url.hostname || url.username || url.password) fail(`${name}需要不含账号密码的 HTTP 或 HTTPS 链接。`);
-  if (url.hostname.toLowerCase() === "upyun.ixzki.com") url.hostname = "img.ixzki.com";
   return url.href;
 }
 function dimension(value: unknown, name: string): number {
@@ -87,16 +86,12 @@ function routeIndex(value: unknown, count: number, name: string): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0 || value >= count) fail(`${name}不在当前路线范围内，请重新选择点位。`);
   return value;
 }
-function updateImageHost(markdown: string): string {
-  return markdown.replace(/(https?:\/\/)upyun\.ixzki\.com(?=[:/?#)\s"'<>]|$)/gi, "$1img.ixzki.com");
-}
-
 /** The API persists only this allowlisted, normalized content. Raw HTML is never enabled by the Markdown renderer. */
 export function validateTravelDocument(value: unknown): TravelDocument {
   const data = object(value, "旅行");
   const id = identifier(data.id, "旅行 ID");
   const slug = string(data.slug, "网址名称", 100);
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) fail("网址名称只能使用小写字母、数字和连字符，例如 xinjiang-2026。");
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) fail("网址名称只能使用小写字母、数字和连字符，例如 example-journey。");
   let shade = string(data.shade, "路线灰度", 7).toLowerCase();
   if (/^#[\da-f]{3}$/.test(shade)) shade = `#${[...shade.slice(1)].map((part) => part + part).join("")}`;
   if (!/^#[\da-f]{6}$/.test(shade) || shade.slice(1, 3) !== shade.slice(3, 5) || shade.slice(3, 5) !== shade.slice(5, 7)) fail("路线颜色需要使用灰色，例如 #626262。");
@@ -145,7 +140,7 @@ export function validateTravelDocument(value: unknown): TravelDocument {
     const paragraphs = stop.paragraphs.map((text) => string(text, "正文", 100_000, true));
     if (!Array.isArray(stop.images) || stop.images.length > 100) fail("每段最多添加 100 张图片。");
     const images = stop.images.map((entry) => image(entry, "正文图片"));
-    const markdown = stop.markdown === undefined ? undefined : updateImageHost(string(stop.markdown, "Markdown 正文", 150_000, true));
+    const markdown = stop.markdown === undefined ? undefined : string(stop.markdown, "Markdown 正文", 150_000, true);
     return {
       id: stopId, title: stopTitle, position: [...points[start]] as Coordinate,
       routePointIndex: start, ...(end === undefined ? {} : { routeEndPointIndex: end }),

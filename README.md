@@ -1,26 +1,41 @@
 # Photo Portfolio
 
-个人摄影作品集与旅行游记网站，使用 **Next.js + Neon Postgres + Vercel**，照片通过又拍云图片 URL 加载。前台延续黑白配色、Jost / Noto Sans SC 字体和反色交互，适配电脑与手机。
+可自建的摄影作品集与旅行游记网站，使用 **Next.js + Neon Postgres + Vercel**。黑白配色，Jost / Noto Sans SC 字体，适配电脑与手机。
 
-## 功能
+仓库提供通用示例作品、关于页面和一条完全合成的旅行路线。示例照片来自 Unsplash，路线、时间与海拔不代表真实行程。个人内容保存在部署者自己的数据库与图床中，详见[示例说明](./examples/README.md)。
 
-- **摄影作品**：首页精选、作品列表、全屏封面、按行编排的照片和图片放大查看。
-- **旅行地图**：整屏展示不同灰度的旅行路线，点击进入游记；封面用白线和黑色描边展示路线轮廓，左下角显示距离、整小时时长与起止时间，随滚动向左淡出。封面后展示全屏地图，随滚动绘制完整行程，并显示精选点位的名称、时间与海拔；正文从下方向上覆盖地图。开启减少动态效果时直接展示完整路线。
-- **游记阅读**：正文与图片居中，照片保持比例并限制在视口高度内；左侧地图跟随阅读位置，点位列表以字号、字重和间距动画提示当前段落，支持点击跳转。1024px 及以上列表在右侧，601–1023px 移至左侧地图下方；600px 及以下隐藏正文随行地图和列表，保留封面轮廓与全程地图。
-- **旅行后台**：选择“一生足迹”等 CSV 后自动识别起止时间，可手动调整范围；导入保留时间和海拔，预览路线距离、时长与实际起止时间，同一轨迹可仅补齐记录并保留原有正文。在地图上添加点位、选取路段或手绘线路，为每段行程编写 Markdown 图文，从正文点位中选择全程地图的精选点位，支持草稿与发布。
-- **作品后台**：作品信息、展示图片、图片编排和更多设置分区；完整行预览、图片排序与跨行移动，常驻保存、快捷键及未保存提醒。
-- **内容管理**：首页精选、媒体 URL 库、关于页面与站点设置。图片文件仍存放在图床，后台管理图片地址与元数据。
-- **加载与缓存**：公开旅行和网站设置缓存 5 分钟，后台保存后立即失效；旅行总览只加载路线绘制所需数据。首次打开前台和进入旅行页时显示白底字标填充动画，首屏就绪后淡出，支持减少动态效果。
+## 快速体验
 
-## 本地运行
-
-需要 **Node.js 24.x**。首次配置时，将 `.env.example` 复制为 `.env.local`；已有文件时保留原配置。
+需要 **Node.js 24.x**，无需数据库或后台密码：
 
 ```powershell
 npm ci
+npm run demo
 ```
 
-在 `.env.local` 填写 Neon **开发分支**的 `DATABASE_URL` 和独立的 `ADMIN_PASSWORD`。如需编辑数据，将 `PREVIEW_READ_ONLY` 改为 `false`。建议从现有生产数据库创建开发分支，以获得基础表和初始内容。
+打开 [http://127.0.0.1:3200](http://127.0.0.1:3200)，示例旅行为 [/travel/example-journey](http://127.0.0.1:3200/travel/example-journey)。
+
+示例启动器明确禁用数据库连接及内容写入，使用独立的 `.next-demo/` 构建目录，不读取本机数据库内容或覆盖 `.env.local`。构建和预览示例生产版本：
+
+```powershell
+npm run demo -- build
+npm run demo -- start
+```
+
+## 功能
+
+- **摄影作品**：首页精选、作品列表、全屏封面、多种按行图片版式和图片放大。
+- **旅行地图**：灰度路线总览，点击进入游记；首屏路线轮廓、距离、时长和起止时间，全程地图随滚动绘制路线并展示精选点位。
+- **游记阅读**：正文与图片居中，随行地图跟随阅读位置，点位列表动态突出当前段落；移动端减少浮层，照片保持比例并限制在视口高度内。
+- **旅行后台**：上传 CSV 后自动识别起止时间，保留逐点时间和海拔；选择点位、选取路段、手绘线路，为每段行程编写 Markdown 图文，选择精选点位，保存草稿或发布。
+- **作品与内容后台**：作品图片编排、排序和跨行移动，首页精选、媒体 URL 库、关于页面及网站设置，保存快捷键和未保存提醒。
+- **加载与缓存**：公开旅行及网站设置缓存 5 分钟，后台保存后失效；加载字标跟随网站名称，页面顶端显示滚动进度，支持减少动态效果。
+
+## 连接自己的内容
+
+首次配置时复制 `.env.example` 为 `.env.local`；已有配置时保留原文件。填写 Neon **开发分支**的 `DATABASE_URL` 和独立 `ADMIN_PASSWORD`，需要编辑时设置 `PREVIEW_READ_ONLY=false`。
+
+配置自己的图片域名：又拍云填写 `NEXT_PUBLIC_UPYUN_HOSTS`，其他图床填写 `IMAGE_REMOTE_HOSTS`。均为逗号分隔的纯域名，例如 `cdn.example.com`。仓库没有内置个人图床，也不会自动改写你的图片域名。
 
 ```powershell
 npm run check:env
@@ -28,16 +43,15 @@ node scripts/migrate-travel.mjs
 npm run preview
 ```
 
-旅行迁移会建表并写入一次性新疆种子；重跑不覆盖已有旅行。它不会同步其他分支后续编辑的内容。运行前确认连接的是目标开发分支。
+访问 [http://127.0.0.1:3100](http://127.0.0.1:3100) 和 [/admin](http://127.0.0.1:3100/admin)。已有站点建议使用独立 Neon 开发分支；基础表需要先配置，`/setup` 提供说明，不自动建表。详细步骤见[本地运行与部署](./docs/deployment.md)。
 
-- 网站：[http://127.0.0.1:3100](http://127.0.0.1:3100)
-- 后台：[http://127.0.0.1:3100/admin](http://127.0.0.1:3100/admin)
+旅行迁移默认只建表，不写入示例。只有需要在自己的示例数据库加入演示路线时，才执行 `node scripts/migrate-travel.mjs --seed-example`；这是一次性插入，重复执行不会覆盖编辑或恢复已删除的示例。
 
-预览只监听本机。Windows 可用 `scripts/start-preview.ps1` / `scripts/stop-preview.ps1` 在后台启停，日志保存在 `.local-preview/`。`/setup` 仅说明配置，不执行数据库初始化。
+后台 CSV 导入可以使用 [examples/example-journey.csv](./examples/example-journey.csv) 练习。真实 CSV、数据库备份和凭据应保存在仓库外；`.gitignore` 仅为明确的 `examples/*.csv` 保留提交入口。
 
-## 发布与数据同步
+## 发布与检查
 
-GitHub 保存代码；Vercel 构建并发布应用；Neon 保存作品、旅行和设置。**推送 Git 或重新部署不会把开发数据库内容同步到生产。** 发布当前编辑结果时，需要分别完成代码部署、目标数据库迁移和内容同步，并核对生产环境变量。
+GitHub 保存代码，Vercel 发布应用，Neon 保存内容。**推送 Git 和重新部署不会同步数据库，也不会用仓库示例覆盖正式内容。** 修改图片域名等构建环境变量后需重新部署。
 
 ```powershell
 npm test
@@ -46,32 +60,28 @@ npm run check:env
 npm run build
 ```
 
-`check:env` 是基础数据库的只读检查；旅行表、内容一致性以及线上页面需单独验证。`.env.local`、数据库备份、原始足迹 CSV 和本地日志不应提交到 GitHub。
+`check:env` 是目标数据库的只读检查。没有数据库时用 `npm run demo -- build` 验证示例构建。内容迁移与生产数据同步需单独核对源、目标和备份，详见[部署说明](./docs/deployment.md)。
 
-时间、海拔和精选标记保存在旅行文档的可选字段中，本次功能无需新增数据库表。历史旅行缺少这些字段时仍可阅读；时间与海拔仅在有原始记录时显示，精选点位需在后台选择并保存。
+Windows 本地预览可用 `scripts/start-preview.ps1` / `scripts/stop-preview.ps1` 后台启停；日志保存在被忽略的 `.local-preview/` 中。
 
 ## 目录
 
 ```text
 src/
-  app/          页面、后台和 API
+  app/          前台、后台与 API
   components/   共用组件
-  lib/          数据库、校验和业务逻辑
+  lib/          数据库、校验与业务逻辑
   workers/      CSV 后台解析
-  data/         迁移种子与测试数据
-public/         运行所需的静态资源
-scripts/        环境检查、数据库迁移和预览启停
-test/           自动化回归测试
+  data/         合成示例路线
+examples/       示例 CSV 与数据说明
+public/         静态资源
+scripts/        环境检查、旅行迁移、示例与本地预览
+test/          自动化回归测试
 docs/           使用、部署与界面说明
-  archive/      早期路线取段记录
 ```
 
-根目录保留 README、环境示例、依赖锁文件及 Next.js / TypeScript / ESLint / PostCSS / Vercel 配置。`.local-preview/`、构建产物、依赖目录和本地凭据由 Git 忽略。
+`.env.local`、依赖、构建产物、本地日志及个人导出文件不应提交到 GitHub。
 
-`scripts` 中的维护入口：`check-env.mjs` 只读检查环境，`migrate-travel.mjs` 执行旅行表的一次性迁移，`start-preview.ps1` / `stop-preview.ps1` 启停 Windows 本地预览。足迹导入统一通过旅行后台进行。
-
-## 文档与技术栈
-
-完整说明见 [文档目录](./docs/README.md)。常用入口：[本地预览与部署](./docs/deployment.md)、[旅行后台](./docs/travel-admin.md)、[CSV 导入](./docs/travel-csv-import.md)。
+完整说明见[文档目录](./docs/README.md)，常用入口：[旅行后台](./docs/travel-admin.md)、[CSV 导入](./docs/travel-csv-import.md)、[示例内容](./examples/README.md)。
 
 Node.js 24 · Next.js 16.3.4 · React 19.2 · TypeScript · Leaflet · react-markdown / remark-gfm · Neon Postgres · Vercel

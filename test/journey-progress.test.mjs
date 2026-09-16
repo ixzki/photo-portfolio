@@ -4,15 +4,17 @@ import test from "node:test";
 import { assertJourney } from "../src/lib/journey.ts";
 import { buildJourneyTimeline, journeyPosition, visibleSegment, readingProgress, readingDistance, tailReadingLine } from "../src/lib/journey-progress.ts";
 
-const journey = JSON.parse(readFileSync(new URL("../src/data/travel.json", import.meta.url), "utf8"));
+const journey = JSON.parse(readFileSync(new URL("../src/data/example-journey.json", import.meta.url), "utf8"));
 
-test("recorded visits have chronological anchors, including the return to Songshutou", () => {
+test("recorded visits have chronological anchors, including the return to the lakeside stop", () => {
   const timeline = buildJourneyTimeline(journey);
   assert.equal(journey.stops.length, 9);
   assert.equal(timeline.stopDistances[0], 0);
   assert.equal(timeline.stopDistances.at(-1), timeline.total);
   assert.ok(timeline.stopDistances.every((value, i, list) => i === 0 || value > list[i - 1]));
   assert.ok(journey.stops[4].routePointIndex > journey.stops[2].routePointIndex);
+  assert.deepEqual(journey.stops[4].position, journey.stops[2].position);
+  assert.ok(timeline.stopDistances[4] > timeline.stopDistances[2]);
   assert.throws(() => assertJourney({ ...journey, stops: [{ ...journey.stops[0], routePointIndex: 999999 }] }));
   assert.throws(() => assertJourney({ ...journey, stops: [journey.stops[2], journey.stops[0]] }));
 });

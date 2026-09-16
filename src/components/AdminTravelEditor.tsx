@@ -184,7 +184,7 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
     <fieldset disabled={locked} className={styles.fields}>
       <section className={styles.panel}><h2>旅行信息</h2><div className={styles.settings}>
         <label>标题<input className="admin-input" value={draft.journey.title} onChange={(event) => updateJourney((journey) => ({ ...journey, title: event.target.value }))} /></label>
-        <label>网址标识<input className="admin-input" value={draft.slug} onChange={(event) => update((value) => ({ ...value, slug: event.target.value }))} placeholder="xinjiang-2026" /></label>
+        <label>网址标识<input className="admin-input" value={draft.slug} onChange={(event) => update((value) => ({ ...value, slug: event.target.value }))} placeholder="example-journey" /></label>
         <label>路线灰度<select className="admin-input" value={draft.shade} onChange={(event) => update((value) => ({ ...value, shade: event.target.value }))}>
           {Array.from(new Set([draft.shade, "#333333", "#626262", "#888888", "#aaaaaa"])).map((shade) => <option key={shade} value={shade}>{shade === "#333333" ? "深灰" : shade === "#626262" ? "灰色" : shade === "#888888" ? "中灰" : shade === "#aaaaaa" ? "浅灰" : shade}</option>)}
         </select></label>
@@ -293,7 +293,7 @@ export default function AdminTravelEditor({ initial, readOnly = false }: { initi
                 setInsertImage(false); setImageUrl(""); setPreview(false);
               }}>插入正文</button></div>}
             {preview ? <div className={styles.markdownPreview}><JourneyMarkdown markdown={stopMarkdown(selected)} /></div> :
-              <label className={styles.markdownLabel}><span>Markdown 正文</span><textarea ref={textarea} aria-label="Markdown 正文" className={styles.markdownInput} value={stopMarkdown(selected)} onChange={(event) => updateStop(selected.id, { markdown: event.target.value, paragraphs: [], images: [] })} placeholder={"在这里写下这段旅程。\n\n![照片描述](https://img.ixzki.com/照片.jpg)"} /></label>}
+              <label className={styles.markdownLabel}><span>Markdown 正文</span><textarea ref={textarea} aria-label="Markdown 正文" className={styles.markdownInput} value={stopMarkdown(selected)} onChange={(event) => updateStop(selected.id, { markdown: event.target.value, paragraphs: [], images: [] })} placeholder={"在这里写下这段旅程。\n\n![照片描述](https://cdn.example.com/photo.jpg)"} /></label>}
             <p className={styles.hint}>支持段落、图片、标题、列表、引用、链接和表格。保存后，正文滚动会推动地图上的路线延伸。</p>
           </> : <div className={styles.empty}>在地图上添加点位或选取路段，即可为它编写正文。</div>}
         </div>

@@ -18,9 +18,10 @@ describe("shared image host configuration", () => {
     }
   });
 
-  it("uses the current image domain and shares custom hosts across frontend and admin", () => {
+  it("has no built-in personal CDN and shares configured hosts across frontend and admin", () => {
+    assert.deepEqual(getUpyunHosts(), []);
     process.env.NEXT_PUBLIC_UPYUN_HOSTS = " photo.example.com,PHOTO.EXAMPLE.COM, cdn.example.net ";
-    assert.deepEqual(getUpyunHosts(), ["img.ixzki.com", "photo.example.com", "cdn.example.net"]);
+    assert.deepEqual(getUpyunHosts(), ["photo.example.com", "cdn.example.net"]);
     for (const host of getUpyunHosts()) {
       const src = `https://${host}/photo.jpg?version=1`;
       assert.equal(isUpyunImageUrl(src), true);
@@ -46,7 +47,7 @@ describe("shared image host configuration", () => {
     assert.equal(url.searchParams.get("w"), "480");
     assert.equal(url.searchParams.get("fit"), "max");
     assert.equal(new URL(toTinyPlaceholderUrl(src)).searchParams.get("w"), "96");
-    for (const other of ["https://evilunsplash.com/a.jpg", "https://unsplash.com.evil.test/a.jpg", "https://example.com/unsplash.com/a.jpg", "not a URL", "ftp://img.ixzki.com/a.jpg"]) {
+    for (const other of ["https://evilunsplash.com/a.jpg", "https://unsplash.com.evil.test/a.jpg", "https://example.com/unsplash.com/a.jpg", "not a URL", "ftp://cdn.example.com/a.jpg"]) {
       assert.equal(toResponsiveImageUrl(other, { width: 480 }), other);
       assert.equal(toTinyPlaceholderUrl(other), "");
     }
@@ -55,7 +56,7 @@ describe("shared image host configuration", () => {
   it("allows only exact HTTPS image hosts including configured external providers", () => {
     process.env.NEXT_PUBLIC_UPYUN_HOSTS = "photo.example.com";
     const patterns = getImageRemotePatterns("assets.example.net,photo.example.com");
-    assert.deepEqual(patterns.map((pattern) => pattern.hostname), ["img.ixzki.com", "photo.example.com", "images.unsplash.com", "plus.unsplash.com", "assets.example.net"]);
+    assert.deepEqual(patterns.map((pattern) => pattern.hostname), ["photo.example.com", "images.unsplash.com", "plus.unsplash.com", "assets.example.net"]);
     assert.ok(patterns.every((pattern) => pattern.protocol === "https" && pattern.port === "" && pattern.pathname === "/**"));
     assert.equal(isUpyunImageUrl("https://assets.example.net/a.jpg"), false);
     assert.equal(isUpyunImageUrl("https://photo.example.com.evil.test/a.jpg"), false);

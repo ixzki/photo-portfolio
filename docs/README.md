@@ -16,9 +16,6 @@
 - [公开数据缓存](./public-data-cache.md)：缓存范围、刷新、环境隔离与验证。
 - [页面加载动画](./page-loading.md)：字标、退出条件及异常处理。
 
-## 历史依据
+## 示例内容
 
-这些记录用于追溯最初的路线选段；内容和验证状态属于当时版本，当前正式内容以 Neon 数据库及后台为准。
-
-- [新疆 2026 初始路线](./archive/xinjiang-2026-route.md)
-- [西北环线 2025 初次导入](./archive/northwest-2025-route.md)
+- [示例数据说明](../examples/README.md)：示例作品、合成路线、CSV 和替换方式。

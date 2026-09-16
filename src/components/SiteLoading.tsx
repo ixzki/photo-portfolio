@@ -18,7 +18,7 @@ export default function SiteLoading({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const sequence = useRef(0);
   const previousPath = useRef(pathname);
-  const [siteName, setSiteName] = useState("iXzKi");
+  const [siteName, setSiteName] = useState("Portfolio");
   const [request, setRequest] = useState<LoadRequest>({
     id: 0, path: pathname, phase: isPublic(pathname) ? "loading" : "idle", started: 0, minimum: 350,
   });

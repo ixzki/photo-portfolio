@@ -4,8 +4,8 @@ import { moveProjectRow, removeProjectRow, moveProjectImage, removeProjectImage,
 
 function fixture() {
   return [
-    { id: "first", layout: "half", order: 0, images: [{ id: "a", url: "https://img.ixzki.com/a.jpg", alt: "original", width: 1200, height: 800, order: 0 }, { id: "b", url: "https://img.ixzki.com/b.jpg", alt: null, width: 800, height: 1200, order: 1 }] },
-    { id: "second", layout: "portrait", order: 1, images: [{ id: "c", url: "https://img.ixzki.com/c.jpg", alt: null, width: 800, height: 1200, order: 0 }] },
+    { id: "first", layout: "half", order: 0, images: [{ id: "a", url: "https://cdn.example.com/a.jpg", alt: "original", width: 1200, height: 800, order: 0 }, { id: "b", url: "https://cdn.example.com/b.jpg", alt: null, width: 800, height: 1200, order: 1 }] },
+    { id: "second", layout: "portrait", order: 1, images: [{ id: "c", url: "https://cdn.example.com/c.jpg", alt: null, width: 800, height: 1200, order: 0 }] },
   ];
 }
 
@@ -29,7 +29,7 @@ test("row and image boundary moves leave the draft untouched", () => {
 test("image updates and reordering address the stable ID so description edits cannot move to a different photo", () => {
   const rows = fixture();
   const moved = moveProjectImage(rows, "first", "a", 1);
-  const updated = updateProjectImage(moved, "first", "a", { alt: "new description", url: "https://img.ixzki.com/new.jpg" });
+  const updated = updateProjectImage(moved, "first", "a", { alt: "new description", url: "https://cdn.example.com/new.jpg" });
   assert.deepEqual(updated[0].images.map((image) => [image.id, image.order]), [["b", 0], ["a", 1]]);
   assert.equal(updated[0].images[1].alt, "new description");
   assert.equal(updated[0].images[0].alt, null);

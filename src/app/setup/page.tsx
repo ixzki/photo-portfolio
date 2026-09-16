@@ -12,6 +12,7 @@ export default function SetupPage() {
         本网站使用 Vercel 部署、Neon Postgres 保存内容，照片通过又拍云图片地址加载。
         此页面提供配置说明，不会创建数据表或修改数据库。
       </p>
+      <p>只想体验示例时，执行 <code>npm ci</code> 和 <code>npm run demo</code>，访问 <code>http://127.0.0.1:3200</code>；无需数据库，示例始终只读。</p>
 
       <section style={{ background: "#f7fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 24, marginTop: 24 }}>
         <h2 style={{ fontSize: 18, fontWeight: 600, margin: "0 0 12px" }}>本地预览</h2>
