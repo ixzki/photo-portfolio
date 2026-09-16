@@ -7,11 +7,9 @@ import { useSiteLoading } from "./SiteLoading";
 
 export default function Navbar({ siteName }: { siteName: string }) {
   const pathname = usePathname();
-  const { startNavigation, setSiteName } = useSiteLoading();
+  const { startNavigation } = useSiteLoading();
   const [scrolled, setScrolled] = useState(false);
   const isDetail = pathname.startsWith("/works/") || pathname.startsWith("/travel/");
-
-  useEffect(() => { setSiteName(siteName); }, [setSiteName, siteName]);
 
   useEffect(() => {
     if (!isDetail) {

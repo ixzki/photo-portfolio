@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { Jost, Noto_Sans_SC } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -54,17 +53,10 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-async function SiteNavbar() {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Resolve the shared cached settings before rendering any brand text, including
+  // the loader's server-rendered first frame. No client-side name replacement.
   const settings = await getShellSettings();
-  return <Navbar siteName={settings.siteName} />;
-}
-
-async function SiteFooter() {
-  const settings = await getShellSettings();
-  return <Footer copyright={settings.copyright} icp={settings.icp} />;
-}
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
   const previewLabel = !process.env.VERCEL ? process.env.LOCAL_PREVIEW_LABEL : undefined;
 
   return (
@@ -75,16 +67,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="theme-color" content="#ffffff" />
       </head>
       <body className={`${jost.variable} ${notoSansSc.variable}`}>
-        <SiteLoading>
+        <SiteLoading siteName={settings.siteName}>
           <ScrollProgress />
           {(isReadOnlyPreview() || previewLabel) && (
             <div className="preview-notice" role="status" style={{ position: "fixed", bottom: 12, left: 12, zIndex: 9999, maxWidth: "calc(100vw - 24px)", padding: "8px 12px", background: "#172019", color: "#fff", fontSize: 12, borderRadius: 6 }}>
               {isDemoPreview() ? "本地示例预览 · 非线上作品 · 只读" : isReadOnlyPreview() ? "只读预览 · 修改与删除已禁用" : previewLabel}
             </div>
           )}
-          <Suspense fallback={<Navbar siteName="Portfolio" />}><SiteNavbar /></Suspense>
+          <Navbar siteName={settings.siteName} />
           <main>{children}</main>
-          <Suspense fallback={null}><SiteFooter /></Suspense>
+          <Footer copyright={settings.copyright} icp={settings.icp} />
         </SiteLoading>
       </body>
     </html>

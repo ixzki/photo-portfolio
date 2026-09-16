@@ -6,19 +6,18 @@ import styles from "./SiteLoading.module.css";
 
 type Phase = "loading" | "leaving" | "idle";
 interface LoadRequest { id: number; path: string; phase: Phase; started: number; minimum: number }
-const LoadingContext = createContext<{ startNavigation: (href: string) => void; setSiteName: (name: string) => void }>({
-  startNavigation: () => {}, setSiteName: () => {},
+const LoadingContext = createContext<{ startNavigation: (href: string) => void }>({
+  startNavigation: () => {},
 });
 const isTravel = (path: string) => path === "/travel" || path.startsWith("/travel/");
 const isPublic = (path: string) => !path.startsWith("/admin") && path !== "/setup";
 
 export function useSiteLoading() { return useContext(LoadingContext); }
 
-export default function SiteLoading({ children }: { children: React.ReactNode }) {
+export default function SiteLoading({ children, siteName }: { children: React.ReactNode; siteName: string }) {
   const pathname = usePathname();
   const sequence = useRef(0);
   const previousPath = useRef(pathname);
-  const [siteName, setSiteName] = useState("Portfolio");
   const [request, setRequest] = useState<LoadRequest>({
     id: 0, path: pathname, phase: isPublic(pathname) ? "loading" : "idle", started: 0, minimum: 350,
   });
@@ -28,7 +27,7 @@ export default function SiteLoading({ children }: { children: React.ReactNode })
     if (target.origin !== window.location.origin || !isTravel(target.pathname) || target.pathname === window.location.pathname) return;
     setRequest({ id: ++sequence.current, path: target.pathname, phase: "loading", started: performance.now(), minimum: 180 });
   }, []);
-  const controls = useMemo(() => ({ startNavigation, setSiteName }), [startNavigation]);
+  const controls = useMemo(() => ({ startNavigation }), [startNavigation]);
 
   useEffect(() => {
     const onBackOrForward = () => {
