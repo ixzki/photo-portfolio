@@ -40,6 +40,6 @@
 
 当前内容保存在 Neon 的 `portfolio_travel`。生产与开发分支独立；同步前备份双方，在目标写入前核对版本及内容，完成后比对完整文档。源 CSV、备份和核验截图放在 Git 忽略的 `.local-preview/` 或项目外，不提交仓库。
 
-原始路线整理依据见 [新疆路线](./xinjiang-2026-route.md) 和 [西北环线](./northwest-2025-route.md)。新旅行通过[旅行后台](./travel-admin.md)导入及编辑，格式见 [CSV 导入](./travel-csv-import.md)。仓库中的 `src/data/travel.json` 仅为一次性迁移种子，不代表数据库中最新的旅行内容。
+原始路线整理依据已归档为 [新疆路线](./archive/xinjiang-2026-route.md) 和 [西北环线](./archive/northwest-2025-route.md)。新旅行通过[旅行后台](./travel-admin.md)导入及编辑，格式见 [CSV 导入](./travel-csv-import.md)。仓库中的 `src/data/travel.json` 仅为一次性迁移种子，不代表数据库中最新的旅行内容。
 
 检查应覆盖纯文字连续段、横竖照片、多段 Markdown、电脑与手机尺寸、全程地图满屏固定与滚轮推进/回退、精选选择保存回读及标注、减少动态效果、随行地图的居中与前进/回退、短尾段在页面底部达到终点、时间海拔格式以及 API 保存时的元数据保留。

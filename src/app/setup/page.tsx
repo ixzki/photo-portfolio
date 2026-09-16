@@ -49,7 +49,7 @@ export default function SetupPage() {
       </section>
 
       <p style={{ marginTop: 24, color: "#4a5568", overflowWrap: "anywhere" }}>
-        完整操作见项目内的《本地预览与Vercel部署.md》。连接串和密码仅保存在本机环境文件或部署平台设置中。
+        完整操作见项目内的《本地预览与 Vercel 部署》（docs/deployment.md）。连接串和密码仅保存在本机环境文件或部署平台设置中。
       </p>
       <Link href="/" style={{ color: "#2b6cb0" }}>返回首页</Link>
     </section>

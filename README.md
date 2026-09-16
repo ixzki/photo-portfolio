@@ -50,15 +50,28 @@ npm run build
 
 时间、海拔和精选标记保存在旅行文档的可选字段中，本次功能无需新增数据库表。历史旅行缺少这些字段时仍可阅读；时间与海拔仅在有原始记录时显示，精选点位需在后台选择并保存。
 
+## 目录
+
+```text
+src/
+  app/          页面、后台和 API
+  components/   共用组件
+  lib/          数据库、校验和业务逻辑
+  workers/      CSV 后台解析
+  data/         迁移种子与测试数据
+public/         运行所需的静态资源
+scripts/        环境检查、数据库迁移和预览启停
+test/           自动化回归测试
+docs/           使用、部署与界面说明
+  archive/      早期路线取段记录
+```
+
+根目录保留 README、环境示例、依赖锁文件及 Next.js / TypeScript / ESLint / PostCSS / Vercel 配置。`.local-preview/`、构建产物、依赖目录和本地凭据由 Git 忽略。
+
+`scripts` 中的维护入口：`check-env.mjs` 只读检查环境，`migrate-travel.mjs` 执行旅行表的一次性迁移，`start-preview.ps1` / `stop-preview.ps1` 启停 Windows 本地预览。足迹导入统一通过旅行后台进行。
+
 ## 文档与技术栈
 
-- [本地预览与 Vercel 部署](./本地预览与Vercel部署.md)：环境变量、数据库迁移、发布与回退。
-- [旅行后台](./docs/travel-admin.md)：地图编辑、Markdown、发布规则与 API。
-- [旅行游记](./docs/travel-journal.md)：全程地图动画、阅读布局、点位导航与时间海拔格式。
-- [足迹 CSV 导入](./docs/travel-csv-import.md)：字段、坐标、时间与导入限制。
-- [后台界面规范](./docs/admin-ui.md)：统一导航、表单分区、保存操作与移动端布局。
-- [前台 UI 规范](./docs/public-ui-style.md)：网站视觉与交互约定。
-- [公开数据缓存](./docs/public-data-cache.md)：缓存范围、即时刷新、环境隔离与验证。
-- [页面加载动画](./docs/page-loading.md)：字标动画、首屏就绪条件、超时与无动画模式。
+完整说明见 [文档目录](./docs/README.md)。常用入口：[本地预览与部署](./docs/deployment.md)、[旅行后台](./docs/travel-admin.md)、[CSV 导入](./docs/travel-csv-import.md)。
 
 Node.js 24 · Next.js 16.3.4 · React 19.2 · TypeScript · Leaflet · react-markdown / remark-gfm · Neon Postgres · Vercel
